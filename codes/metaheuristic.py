@@ -21,8 +21,6 @@ env = gp.Env(empty=True)
 env.setParam("OutputFlag",0)
 env.start()
 
-# problemas con la perturbacion c
-
 class instance():
     def __init__(self, name, capacity, node_data, num, reset_demand = True):
         self.name = name
@@ -784,6 +782,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# IMPORTANTE
-# Todas las Heurísticas y metaheurísticas resuelven para demanda = 1, por lo que sería relevante cambiarle 

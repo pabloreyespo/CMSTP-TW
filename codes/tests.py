@@ -47,7 +47,7 @@ def test(method ,cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param 
     instances = os.listdir("instances")
     results = list()
     for inst in instances:
-        print(inst)
+        print(f"{inst}-Q{cap}")
         name, capacity, node_data = read_instance(f"instances/{inst}")
         ins = instance(name, capacity, node_data, nnodes)
         ins.capacity = cap
