@@ -1,5 +1,5 @@
 # CMSTP-TW
-Work on the capacitated minimum spanning tree problem with time windows
+Capacitated minimum spanning tree problem with time windows
 
 [1]M. Kritikos, G. Ioannou, A greedy heuristic for the capacitated minimum spanning tree problem, Journal of the Operational Research Society. 68 (2017) 1223–1235. 
 
