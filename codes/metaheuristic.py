@@ -9,7 +9,8 @@ from sortedcollections import SortedDict
 from time import perf_counter
 from disjoint_set import DisjointSet
 
-from heuristics_short import * # usar LPDH solution u otra mejor
+from heuristics import algorithm, LPDH_solution # usar LPDH solution u otra mejor
+from exact_solutions import cplex_solution, gurobi_solution
 from utilities import extract_data, read_instance,  visualize
 
 PENALIZATION = 0.5
@@ -100,138 +101,7 @@ class branch_bound:
                             self.explore((P, gate, load, arrival), cost + distance(i, j), nodes_left - {j})
                             load[gate[j]] -= 1
 
-def cplex_solution(ins, vis = False, time_limit = 1800, verbose = False):
-
-    nodes = ins.nodes
-    nnodes = ins.n
-    edges = ins.edges
-    nodesv = nodes[1:]
-    Q = ins.capacity
-    earliest = ins.earliest
-    latest = ins.latest
-
-    demands = ins.demands
-
-    # model and variables
-    mdl = Model(ins.name)
-    x = mdl.binary_var_dict(edges, name = "x") #
-    y = mdl.integer_var_dict(edges, name = "y", lb = 0)
-    d = mdl.continuous_var_dict(nodes, name = "d", lb = 0)
-
-    # objective function
-    mdl.minimize(mdl.sum(distance(i,j) * x[(i,j)] for i,j in edges))
-
-    # restrictions
-    for j in nodesv:
-        mdl.add_constraint(mdl.sum(x[(i,j)] for i in nodes if i!=j) == 1)
-
-    for j in nodesv:
-        mdl.add_constraint(mdl.sum(y[(i,j)] for i in nodes if i!=j) - mdl.sum(y[(j,i)] for i in nodesv if i!=j) == demands[j])
-    
-    for i,j in edges:
-        mdl.add_constraint(x[(i,j)] <= y[(i,j)])
-    
-    for i,j in edges:
-        mdl.add_constraint(y[(i,j)] <= Q * x[(i,j)]) #  (Q - demands[i]) * x[(i,j)])
-
-    for i,j in edges:
-        mdl.add_indicator(x[(i,j)], d[i] + distance(i,j) <= d[j])
-
-    for i in nodes:
-        mdl.add_constraint(d[i] >= earliest[i])
-    
-    for i in nodes:
-        mdl.add_constraint(d[i]  <= latest[i])
-
-    mdl.parameters.timelimit = time_limit # timelimit = 30 minutes
-    mdl.parameters.threads = 1 # only one cpu thread in use
-    solution = mdl.solve(log_output = False)
-
-    solution_edges = SortedDict()
-    for i,j in edges:
-        if x[(i,j)].solution_value > 0.9:
-            solution_edges[j] = i
-
-    objective_value = mdl.objective_value
-    time = mdl.solve_details.time
-    best_bound = mdl.solve_details.best_bound
-    gap = mdl.solve_details.mip_relative_gap
-
-    # to display the solution given by cplex
-    if verbose == True: 
-        solution.display()
-    # to visualize the graph 
-    if vis: 
-        visualize(ins.xcoords, ins.ycoords, solution_edges) 
-
-    return objective_value, time, best_bound, gap
-
-def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
-
-    nnodes = ins.n
-    
-    Q = ins.capacity
-    earliest = ins.earliest
-    latest = ins.latest
-    demands = ins.demands
-
-    edges, cost = gp.multidict({(i,j): D[i,j] for (i,j) in ins.edges})
-    nodes, earliest, latest, demands = gp.multidict({i: (ins.earliest[i], ins.latest[i], ins.demands[i]) for i in ins.nodes })
-    nodesv = nodes[1:]
-
-    M =  10000000#max(latest) + max(cost.values()) + 1
-
-    # model and variables
-    mdl = gp.Model(ins.name)
-    x = mdl.addVars(edges, vtype = GRB.BINARY, name = "x") #
-    y = mdl.addVars(edges, vtype = GRB.INTEGER, name = "y", lb = 0)
-    d = mdl.addVars(nodes, vtype = GRB.CONTINUOUS, name = "d", lb = 0)
-
-    mdl.setObjective(x.prod(cost))
-
-    R1 = mdl.addConstrs((gp.quicksum(x[(i,j)] for i in nodes if i!=j) == 1 for j in nodesv),name = "R1")
-    # restrictions
-    R2 = mdl.addConstrs((gp.quicksum(y[(i,j)] for i in nodes if i!=j) - gp.quicksum(y[(j,i)] for i in nodesv if i!=j) == demands[j] for j in nodesv), name = "R2")
-
-    R3 = mdl.addConstrs((x[(i,j)] <= y[(i,j)] for i,j in edges),name = "R3")
-    
-    # R4 = mdl.addConstrs((y[(i,j)] <= (Q - demands[i]) * x[(i,j)] for i,j in edges), name = "R4")
-    R4 = mdl.addConstrs((y[(i,j)] <= Q * x[(i,j)] for i,j in edges), name = "R4")
-
-    R5 = mdl.addConstrs((d[i] + cost[(i,j)] - d[j] <= M * (1 - x[(i,j)]) for i,j in edges), name = "R5")
-
-    R6 = mdl.addConstrs((d[i] >= earliest[i] for i in nodes), name = "R6")
-
-    R7 = mdl.addConstrs((d[i] <= latest[i] for i in nodes), name = "R7")
-    
-
-    mdl.Params.TimeLimit = time_limit
-    mdl.Params.Threads = 1
-
-    solution = mdl.optimize() 
-
-    solution_edges = SortedDict()
-    for i,j in edges:
-        if x[i,j].X > 0.9:
-            solution_edges[j] = i
-
-    obj = mdl.getObjective()
-    objective_value = obj.getValue()
-    
-    time = mdl.Runtime
-    best_bound = mdl.ObjBound
-    gap = mdl.MIPGap
-
-    # to display the solution given by cplex
-    # if verbose == True: 
-    #     solution.display()
-    # to visualize the graph 
-    if vis: 
-        visualize(ins.xcoords, ins.ycoords, solution_edges) 
-
-    return objective_value, time, best_bound, gap
-
-def cplex_solution_fast(branch):
+def branch_cplex(branch):
 
     nodes = [0] + branch
     nodesv = branch
@@ -270,7 +140,7 @@ def cplex_solution_fast(branch):
     parent = SortedDict()
     departure = SortedDict()
     for i,j in edges:
-        if x[(i,j)].solution_value > 0.9:
+        if x[(i,j)].solution_value > 0:
             parent[j] = i
             departure[j] = d[j].solution_value
 
@@ -292,7 +162,7 @@ def cplex_solution_fast(branch):
 
     return (parent, gate, load, arrival)
 
-def gurobi_solution_fast(branch):
+def branch_gurobi(branch):
 
     nodes = [0] + branch
     nodesv = branch
@@ -335,7 +205,7 @@ def gurobi_solution_fast(branch):
     parent = SortedDict()
     departure = SortedDict()
     for i,j in edges:
-        if x[(i,j)].X > 0.9:
+        if x[(i,j)].X > 0:
             parent[j] = i
             departure[j] = d[j].X
 
@@ -357,68 +227,7 @@ def gurobi_solution_fast(branch):
 
     return (parent, gate, load, arrival)
 
-def prim_solution(ins, vis  = False):
 
-    nodes = ins.nodes # ignore demand
-    start = perf_counter()
-    nnodes = len(nodes)
-
-    pred = SortedDict()
-    arrival_time = SortedDict()
-    for i in range(nnodes):
-        pred[i] = -1
-        arrival_time[i] = 0
-
-    itree = set() # muestra que es lo ultimo que se ha añadido
-
-    d = inf
-    for j in nodes[1:]:
-        if distance(0,j) < d:
-            d = distance(0,j)
-            v = j
-
-    itree.add(0) #orden en que son nombrados
-    itree.add(v)
-
-    pred[v] = 0
-    arrival_time[v] = cost = d
-
-    numnod = 2
-
-    while numnod < nnodes: # mientras no estén todos los nodos
-        min_tree = inf
-        for j in range(nnodes): # par cada nodo candidato
-            min_node = inf
-            # Dado un nodo j que no está en el árbol, busco el mejor predecesor
-            if j not in itree:
-                for ki in itree: # k: parent, j: offspring
-                    # calcula si alcanza a llegar desde alguno de los nodos que ya estan colocados
-                    dkj = distance(ki,j)
-                    crit_node = dkj
-                    if crit_node < min_node:
-                        min_node = crit_node
-                        k = ki
-
-                crit_tree = min_node
-                if crit_tree < min_tree:
-                    kk = k
-                    jj = j
-                    min_tree = crit_tree
-
-        numnod += 1
-        itree.add(jj)
-        pred[jj] = kk
-        # visualize(ins.xcoords, ins.ycoords, pred)
-        cost += distance(kk,jj)
-        arrival_time[jj] = arrival_time[kk] + distance(kk,jj)
-
-    time = perf_counter() - start
-
-    if vis:
-        visualize(ins.xcoords, ins.ycoords, pred)
-    best_bound = None
-    gap = None
-    return cost, time, best_bound, gap
 
 def distance(i,j):
     return D[(i,j)]
@@ -453,7 +262,7 @@ def optimal_branch(s):
                     bb = branch_bound(branch)
                     aux = bb.best_solution
                 else:
-                    aux = gurobi_solution_fast(branch)
+                    aux = branch_gurobi(branch)
 
                 for j in branch:
                     P[j] = aux[0][j]
@@ -766,18 +575,20 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
 
 def main():
     # hacer que esto pase a trabajar con un vector s que consta de [P, gate, load]
-    name, capacity, node_data = read_instance("instances/rc202.txt")
+    name, capacity, node_data = read_instance("instances/rc105.txt")
     ins = instance(name, capacity, node_data, 100)
     ins.capacity = 20
     #for i in range(10):
-    if True:
+    if False:
         obj, time, best_bound, gap = ILS_solution(
             ins, semilla = 0, feasibility_param = 100, elite_param= 250,
             p  = 0, b = [1,0,0,0,0,0], mu  = 0, elite_size = 20,
             iterMax = 15000, elite_revision_param = 1500, vis = True, verbose = False) # ,0, pruffer_encode, pruffer_decode
     
     # obj, time, best_bound, gap = prim_solution(ins, vis = True) # ,0, pruffer_encode, pruffer_decode
-    # obj, time, best_bound, gap = gurobi_solution(ins, vis = True, verbose = False)
+    obj, time, best_bound, gap = gurobi_solution(ins, vis = True, verbose = False)
+    print(obj)
+    print(time)
     return None
 
 if __name__ == "__main__":
