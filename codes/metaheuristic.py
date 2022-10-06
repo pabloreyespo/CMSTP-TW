@@ -106,7 +106,7 @@ def branch_cplex(branch):
     nodes = [0] + branch
     nodesv = branch
     edges =  [(i,j) for i in nodes for j in nodesv if i != j]
-    demands = {i:1 for i in nodes}
+    demands = {i:1 for i in nodes} # ---------------------------------------------------------------------
 
     # model and variables
     mdl = Model("branch")
@@ -119,18 +119,10 @@ def branch_cplex(branch):
 
     # restrictions
     for j in nodesv: mdl.add_constraint(mdl.sum(x[(i,j)] for i in nodes if i!=j) == 1)
-
     for j in nodesv: mdl.add_constraint(mdl.sum(y[(i,j)] for i in nodes if i!=j) - mdl.sum(y[(j,i)] for i in nodesv if i!=j) == demands[j])
-    
     for i,j in edges: mdl.add_constraint(x[(i,j)] <= y[(i,j)])
-    
-    # for i,j in edges: mdl.add_constraint(y[(i,j)] <= (Q - demands[i]) * x[(i,j)])
-
-    #  M = max(latest) + max(cost.values()) + 1
     for i,j in edges: mdl.add_indicator(x[(i,j)], d[i] + distance(i,j) <= d[j])
-
     for i in nodes: mdl.add_constraint(d[i] >= earliest[i])
-    
     for i in nodes: mdl.add_constraint(d[i]  <= latest[i])
 
     mdl.parameters.timelimit = 1
@@ -183,18 +175,11 @@ def branch_gurobi(branch):
     mdl.setObjective(x.prod(cost))
 
     R1 = mdl.addConstrs((gp.quicksum(x[(i,j)] for i in nodes if i!=j) == 1 for j in nodesv),name = "R1")
-    # restrictions
     R2 = mdl.addConstrs((gp.quicksum(y[(i,j)] for i in nodes if i!=j) - gp.quicksum(y[(j,i)] for i in nodesv if i!=j) == demands[j] for j in nodesv), name = "R2")
-
     R3 = mdl.addConstrs((x[(i,j)] <= y[(i,j)] for i,j in edges),name = "R3")
-    
-    # R4 = mdl.addConstrs((y[(i,j)] <= (Q - demands[i]) * x[(i,j)] for i,j in edges), name = "R4")
     R4 = mdl.addConstrs((y[(i,j)] <= Q * x[(i,j)] for i,j in edges), name = "R4")
-
     R5 = mdl.addConstrs((d[i] + cost[(i,j)] - d[j] <= M * (1 - x[(i,j)]) for i,j in edges), name = "R5")
-
     R6 = mdl.addConstrs((d[i] >= earliests[i] for i in nodes), name = "R6")
-
     R7 = mdl.addConstrs((d[i] <= latests[i] for i in nodes), name = "R7")
     
     mdl.Params.TimeLimit = 1
@@ -226,8 +211,6 @@ def branch_gurobi(branch):
                 arrival[j] = earliest[j]
 
     return (parent, gate, load, arrival)
-
-
 
 def distance(i,j):
     return D[(i,j)]
