@@ -1,5 +1,7 @@
 import pandas as pd
+from codes.heuristics import ESGH_solution
 from metaheuristic import *
+from heuristics import LPDH_solution, ESGH_solution
 import os
 
 def test_heuristics(cap, alg):

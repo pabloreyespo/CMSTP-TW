@@ -23,7 +23,7 @@ class instance():
         self.nodes = [i for i in range(num+1)]
         self.edges = [(i,j) for i in self.nodes for j in self.nodes[1:] if i != j]
 
-        #demands = 1 for all nodes 
+        #demands = 1 for all nodes
         if reset_demand:
             self.demands = {i:1 for i in self.nodes}
 
@@ -71,10 +71,10 @@ def cplex_solution(ins, vis = False, time_limit = 1800, verbose = False):
 
     for j in nodesv:
         mdl.add_constraint(mdl.sum(y[(i,j)] for i in nodes if i!=j) - mdl.sum(y[(j,i)] for i in nodesv if i!=j) == demands[j])
-    
+
     for i,j in edges:
         mdl.add_constraint(x[(i,j)] <= y[(i,j)])
-    
+
     for i,j in edges:
         mdl.add_constraint(y[(i,j)] <= Q * x[(i,j)]) #  (Q - demands[i]) * x[(i,j)])
 
@@ -83,7 +83,7 @@ def cplex_solution(ins, vis = False, time_limit = 1800, verbose = False):
 
     for i in nodes:
         mdl.add_constraint(d[i] >= earliest[i])
-    
+
     for i in nodes:
         mdl.add_constraint(d[i]  <= latest[i])
 
@@ -102,18 +102,18 @@ def cplex_solution(ins, vis = False, time_limit = 1800, verbose = False):
     gap = mdl.solve_details.mip_relative_gap
 
     # to display the solution given by cplex
-    if verbose == True: 
+    if verbose == True:
         solution.display()
-    # to visualize the graph 
-    if vis: 
-        visualize(ins.xcoords, ins.ycoords, solution_edges) 
+    # to visualize the graph
+    if vis:
+        visualize(ins.xcoords, ins.ycoords, solution_edges)
 
     return objective_value, time, best_bound, gap
 
 def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
 
     nnodes = ins.n
-    
+
     Q = ins.capacity
     earliest = ins.earliest
     latest = ins.latest
@@ -138,7 +138,7 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
     R2 = mdl.addConstrs((gp.quicksum(y[(i,j)] for i in nodes if i!=j) - gp.quicksum(y[(j,i)] for i in nodesv if i!=j) == demands[j] for j in nodesv), name = "R2")
 
     R3 = mdl.addConstrs((x[(i,j)] <= y[(i,j)] for i,j in edges),name = "R3")
-    
+
     # R4 = mdl.addConstrs((y[(i,j)] <= (Q - demands[i]) * x[(i,j)] for i,j in edges), name = "R4")
     R4 = mdl.addConstrs((y[(i,j)] <= Q * x[(i,j)] for i,j in edges), name = "R4")
 
@@ -147,12 +147,12 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
     R6 = mdl.addConstrs((d[i] >= earliest[i] for i in nodes), name = "R6")
 
     R7 = mdl.addConstrs((d[i] <= latest[i] for i in nodes), name = "R7")
-    
+
 
     mdl.Params.TimeLimit = time_limit
     mdl.Params.Threads = 1
 
-    solution = mdl.optimize() 
+    solution = mdl.optimize()
 
     solution_edges = SortedDict()
     for i,j in edges:
@@ -161,21 +161,21 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
 
     obj = mdl.getObjective()
     objective_value = obj.getValue()
-    
+
     time = mdl.Runtime
     best_bound = mdl.ObjBound
     gap = None # mdl.MIPGap
 
     # to display the solution given by cplex
-    # if verbose == True: 
+    # if verbose == True:
     #     solution.display()
-    # to visualize the graph 
-    if vis: 
-        visualize(ins.xcoords, ins.ycoords, solution_edges) 
+    # to visualize the graph
+    if vis:
+        visualize(ins.xcoords, ins.ycoords, solution_edges)
 
     return objective_value, time, best_bound, gap
 
-    
+
 def distance(i,j):
     return D[(i,j)]
 
