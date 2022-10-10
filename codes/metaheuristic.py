@@ -10,6 +10,7 @@ from time import perf_counter
 from disjoint_set import DisjointSet
 
 from heuristics import algorithm, LPDH_solution # usar LPDH solution u otra mejor
+# from heuristics_short import *
 from exact_solutions import cplex_solution, gurobi_solution
 from utilities import extract_data, read_instance,  visualize
 
@@ -441,7 +442,7 @@ def best_father(s): #perturbation 1
 def local_search(s):
     return best_father(s)
 
-def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu = 0,
+def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu = 0, alpha = 0,
                 feasibility_param = 100, elite_param = 250, elite_size = 20, iterMax = 15000, p = PENALIZATION,
                 pa = PERTURBATION_A, pb = PERTURBATION_B, lsp = LOCAL_SEARCH_PARAM,
                 elite_revision_param = 1500, vis  = False, verbose = False):
@@ -461,7 +462,7 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
     latest = ins.latest
 
     start = perf_counter()
-    s, cost_best = LPDH_solution(ins,b = np.array(b), mu = mu,  vis = False, initial = True)
+    s, cost_best = LPDH_solution(ins,b = np.array(b), alpha = alpha ,mu = mu,  vis = False, initial = True)
     candidate_cost = cost_best
     cost_best_unfeasible = inf
     feasible = True
@@ -500,8 +501,9 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
 
         if verbose: print(it, candidate_cost)
         else:
-            text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
-            print(text, end = "\r")
+            # text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
+            # print(text, end = "\r")
+            pass
 
         if feasible: feasible_count += 1
         else: unfeasible_count += 1
