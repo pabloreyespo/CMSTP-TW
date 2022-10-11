@@ -4,7 +4,8 @@ import os
 
 def test8(method ,cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param,iterMax, nombre):
     
-    instances = os.listdir("instances")
+    # instances = os.listdir("instances")
+    instances = ["r204.txt"]
     results = list()
     for inst in instances:
         print(f"{inst}-Q{cap}")
@@ -50,7 +51,8 @@ def test8(method ,cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param
     df.to_excel(f"resultados/{nombre}.xlsx", index= False)
 
 if __name__ == "__main__":
-    caps = [10000,20,15,10,5]
+    # caps = [10000,20,15,10,5]
+    caps = [10000]
     nnodes = 100
     for cap in caps:
         test8("ils", cap, nnodes, 0.4, 0.6, 1 , 250, 100, 1500, 15000, f"Experimento 8 Q-{cap}")
