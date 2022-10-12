@@ -5,7 +5,7 @@ import os
 def test8(method ,cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param,iterMax, nombre):
     
     # instances = os.listdir("instances")
-    instances = ["r204.txt"]
+    instances = ["rc105.txt"]
     results = list()
     for inst in instances:
         print(f"{inst}-Q{cap}")
@@ -19,7 +19,7 @@ def test8(method ,cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param
             time_sum = 0
             solution_sum = 0
 
-            for i in range(10):
+            for i in range(2,10):
                 obj, time, best_bound, gap = ILS_solution(ins, semilla = i, pa = pa , pb = pb, lsp = lsp, b = [1,0,1,0.2,0.4,0], mu = 1, alpha = 1,
                         feasibility_param= f_param,elite_param=e_param, elite_revision_param = elite_search_param,iterMax = iterMax) 
 
@@ -56,3 +56,5 @@ if __name__ == "__main__":
     nnodes = 100
     for cap in caps:
         test8("ils", cap, nnodes, 0.4, 0.6, 1 , 250, 100, 1500, 15000, f"Experimento 8 Q-{cap}")
+
+#rc105 semilla 3

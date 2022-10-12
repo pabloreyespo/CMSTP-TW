@@ -1,5 +1,38 @@
 import matplotlib.pyplot as plt
 import pandas as pd
+from math import sqrt
+import numpy as np
+
+class instance():
+    def __init__(self, name, capacity, node_data, num, reset_demand = True):
+        self.name = name
+        self.n = num + 1
+        self.capacity = int(capacity)
+        self.index, self.xcoords, self.ycoords, self.demands, self.earliest, self.latest\
+            = extract_data(node_data[:num+1])
+
+        self.nodes = [i for i in range(num+1)]
+        self.edges = [(i,j) for i in self.nodes for j in self.nodes[1:] if i != j]
+
+        #demands = 1 for all nodes 
+        if reset_demand:
+            self.demands = {i:1 for i in self.nodes}
+
+        # cost = time = distance for simplicity
+
+        global D
+        D = np.zeros((self.n,self.n))
+        for i in range(self.n):
+            for j in range(i+1,self.n):
+                D[i,j] = self.dist(i,j)
+                D[j,i] = D[i,j]
+
+        self.cost = D
+
+    def dist(self,i,j):
+        x = self.xcoords[i] - self.xcoords[j]
+        y = self.ycoords[i] - self.ycoords[j]
+        return sqrt(x**2 + y**2)
 
 def read_instance(location, extension = "txt"):
     if extension == "txt":
@@ -64,15 +97,3 @@ def visualize(xcoords, ycoords, F):
 
 if __name__ == "__main__":
     pass
-
-# name, capacity, nodes = read_salomon("instances/c101.txt")
-# index, xcoords, ycoords, demands, earliest_times, latest_times = extract_data(nodes)
-# lim = 100
-# N = [i for i in range(lim)]
-# xcoords = xcoords[0:lim]
-# ycoords = ycoords[0:lim]
-
-# edges = [(i,j) for i in N for j in N if i != j]
-
-# visualizar(xcoords, ycoords, edges)
-

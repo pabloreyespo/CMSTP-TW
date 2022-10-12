@@ -1,9 +1,7 @@
-from msilib.schema import IniFile
-from docplex.mp.model import Model
 import numpy as np
-from math import sqrt, inf
+from math import inf
 
-from utilities import extract_data, read_instance,  visualize
+from utilities import visualize
 from time import perf_counter
 from sortedcollections import SortedDict
 

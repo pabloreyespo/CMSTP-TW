@@ -1,7 +1,9 @@
 import pandas as pd
 from codes.heuristics import ESGH_solution
-from metaheuristic import *
+from metaheuristic_gurobi import *
+from metaheuristic_cplex import *
 from heuristics import LPDH_solution, ESGH_solution
+from utilities import *
 import os
 
 def test_heuristics(cap, alg):

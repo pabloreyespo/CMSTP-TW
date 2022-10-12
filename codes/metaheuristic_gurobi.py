@@ -1,18 +1,15 @@
-from docplex.mp.model import Model
 import gurobipy as gp
 from gurobipy import GRB
 
 import numpy as np
-from math import sqrt, inf
+from math import inf
 from random import choice, seed, random, sample
 from sortedcollections import SortedDict
 from time import perf_counter
 from disjoint_set import DisjointSet
 
-from heuristics import algorithm, LPDH_solution # usar LPDH solution u otra mejor
-# from heuristics_short import *
-from exact_solutions import cplex_solution, gurobi_solution
-from utilities import extract_data, read_instance,  visualize
+from heuristics import LPDH_solution # usar LPDH solution u otra mejor
+from utilities import read_instance,  visualize, instance
 
 PENALIZATION = 0.5
 PERTURBATION_A = 1
@@ -22,37 +19,6 @@ LOCAL_SEARCH_PARAM = 1
 env = gp.Env(empty=True)
 env.setParam("OutputFlag",0)
 env.start()
-
-class instance():
-    def __init__(self, name, capacity, node_data, num, reset_demand = True):
-        self.name = name
-        self.n = num + 1
-        self.capacity = int(capacity)
-        self.index, self.xcoords, self.ycoords, self.demands, self.earliest, self.latest\
-            = extract_data(node_data[:num+1])
-
-        self.nodes = [i for i in range(num+1)]
-        self.edges = [(i,j) for i in self.nodes for j in self.nodes[1:] if i != j]
-
-        #demands = 1 for all nodes 
-        if reset_demand:
-            self.demands = {i:1 for i in self.nodes}
-
-        # cost = time = distance for simplicity
-
-        global D
-        D = np.zeros((self.n,self.n))
-        for i in range(self.n):
-            for j in range(i+1,self.n):
-                D[i,j] = self.dist(i,j)
-                D[j,i] = D[i,j]
-
-        self.D = D
-
-    def dist(self,i,j):
-        x = self.xcoords[i] - self.xcoords[j]
-        y = self.ycoords[i] - self.ycoords[j]
-        return sqrt(x**2 + y**2)
 
 class branch_bound:
     def __init__(self, s):
@@ -102,59 +68,6 @@ class branch_bound:
                             self.explore((P, gate, load, arrival), cost + distance(i, j), nodes_left - {j})
                             load[gate[j]] -= 1
 
-def branch_cplex(branch):
-
-    nodes = [0] + branch
-    nodesv = branch
-    edges =  [(i,j) for i in nodes for j in nodesv if i != j]
-    demands = {i:1 for i in nodes} # ---------------------------------------------------------------------
-
-    # model and variables
-    mdl = Model("branch")
-    x = mdl.binary_var_dict(edges, name = "x")
-    y = mdl.integer_var_dict(edges, name = "y", lb = 0)
-    d = mdl.continuous_var_dict(nodes, name = "d", lb = 0)
-
-    # objective function
-    mdl.minimize(mdl.sum(distance(i,j) * x[(i,j)] for i,j in edges)) # i es
-
-    # restrictions
-    for j in nodesv: mdl.add_constraint(mdl.sum(x[(i,j)] for i in nodes if i!=j) == 1)
-    for j in nodesv: mdl.add_constraint(mdl.sum(y[(i,j)] for i in nodes if i!=j) - mdl.sum(y[(j,i)] for i in nodesv if i!=j) == demands[j])
-    for i,j in edges: mdl.add_constraint(x[(i,j)] <= y[(i,j)])
-    for i,j in edges: mdl.add_indicator(x[(i,j)], d[i] + distance(i,j) <= d[j])
-    for i in nodes: mdl.add_constraint(d[i] >= earliest[i])
-    for i in nodes: mdl.add_constraint(d[i]  <= latest[i])
-
-    mdl.parameters.timelimit = 1
-    mdl.parameters.threads = 1
-
-    solution = mdl.solve(log_output = False)
-    parent = SortedDict()
-    departure = SortedDict()
-    for i,j in edges:
-        if x[(i,j)].solution_value > 0:
-            parent[j] = i
-            departure[j] = d[j].solution_value
-
-    gate= SortedDict()
-    load = { j : 0 for j in parent.keys()}
-    arrival = SortedDict()
-    arrival[0] = 0
-    for j in sorted(parent.keys(), key = lambda x: departure[x]):
-        if j != 0:
-            i = parent[j]
-            if i == 0:
-                gate[j] = j
-            else:
-                gate[j] = gate[i]
-            load[gate[j]] += 1
-            arrival[j] = arrival[i] + distance(i,j)
-            if arrival[j] < earliest[j]:
-                arrival[j] = earliest[j]
-
-    return (parent, gate, load, arrival)
-
 def branch_gurobi(branch):
 
     nodes = [0] + branch
@@ -165,12 +78,12 @@ def branch_gurobi(branch):
     nodes, earliests, latests, demands = gp.multidict({i: (earliest[i], latest[i], 1) for i in nodes })
     nodesv = nodes[1:]
 
-    M =  10000000#max(latest) + max(cost.values()) + 1
+    M = max(latest) + max(cost.values())
 
     # model and variables
     mdl = gp.Model(env = env)
     x = mdl.addVars(edges, vtype = GRB.BINARY, name = "x") #
-    y = mdl.addVars(edges, vtype = GRB.INTEGER, name = "y", lb = 0)
+    y = mdl.addVars(edges, vtype = GRB.CONTINUOUS, name = "y", lb = 0)
     d = mdl.addVars(nodes, vtype = GRB.CONTINUOUS, name = "d", lb = 0)
 
     mdl.setObjective(x.prod(cost))
@@ -339,8 +252,6 @@ def branch_to_root(s):
     return (P, gate, load, arrival)
 
 def branch_to_branch(s):
-
-   
     P = s[0]
     gate = s[1]
     load = s[2]
@@ -387,9 +298,6 @@ def branch_to_branch(s):
     return (P, gate, load, arrival)
 
 def best_father(s): #perturbation 1
-
-    
-    
     P = s[0]
     gate = s[1]
     load = s[2]
@@ -451,13 +359,15 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
         np.random.seed(semilla)
         seed(semilla)
 
-    global PENALIZATION, Q, earliest, latest, PERTURBATION_A, PERTURBATION_B, LOCAL_SEARCH_PARAM
+    global PENALIZATION, Q, earliest, latest, PERTURBATION_A, PERTURBATION_B, LOCAL_SEARCH_PARAM, D
     PENALIZATION = p
     PERTURBATION_A = pa
     PERTURBATION_B = pb
     LOCAL_SEARCH_PARAM = lsp
 
+    D = ins.cost
     Q = ins.capacity
+    
     earliest = ins.earliest
     latest = ins.latest
 
@@ -501,8 +411,8 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
 
         if verbose: print(it, candidate_cost)
         else:
-            # text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
-            # print(text, end = "\r")
+            text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
+            print(text, end = "\r")
             pass
 
         if feasible: feasible_count += 1
@@ -564,17 +474,16 @@ def main():
     ins = instance(name, capacity, node_data, 100)
     ins.capacity = 20
     #for i in range(10):
-    if False:
-        obj, time, best_bound, gap = ILS_solution(
-            ins, semilla = 0, feasibility_param = 100, elite_param= 250,
-            p  = 0, b = [1,0,0,0,0,0], mu  = 0, elite_size = 20,
-            iterMax = 15000, elite_revision_param = 1500, vis = True, verbose = False) # ,0, pruffer_encode, pruffer_decode
+    obj, time, best_bound, gap = ILS_solution(
+        ins, semilla = 0, feasibility_param = 100, elite_param= 250,
+        p  = 0, b = [1,0,0,0,0,0], mu  = 0, elite_size = 20,
+        iterMax = 15000, elite_revision_param = 1500, vis = True, verbose = False) # ,0, pruffer_encode, pruffer_decode
     
-    # obj, time, best_bound, gap = prim_solution(ins, vis = True) # ,0, pruffer_encode, pruffer_decode
-    obj, time, best_bound, gap = gurobi_solution(ins, vis = True, verbose = False)
-    print(obj)
-    print(time)
     return None
 
 if __name__ == "__main__":
     main()
+
+# hacer un archivo que solo funcione con gurobi y otro solo con cplex
+# darle una vuelta al relajamiento
+# ejecutar todo de nuevo: cplex, gurobi, [7], [8]
