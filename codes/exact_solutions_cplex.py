@@ -1,16 +1,7 @@
-import numpy as np
-from math import sqrt
-
 from docplex.mp.model import Model
-import gurobipy as gp
-from gurobipy import GRB
-
-import numpy as np
-from math import sqrt, inf
 from sortedcollections import SortedDict
-from time import perf_counter
 
-from utilities import extract_data, visualize, instance
+from utilities import extract_data, visualize, instance, visualize_relaxed
 
 def cplex_solution(ins, vis = False, time_limit = 1800, verbose = False):
 
@@ -30,7 +21,7 @@ def cplex_solution(ins, vis = False, time_limit = 1800, verbose = False):
     y = mdl.continuous_var_dict(edges, name = "y", lb = 0)
     d = mdl.continuous_var_dict(nodes, name = "d", lb = 0)
 
-    M = max(latest) + D.max() + 1
+    M = max(latest) + D.max() * 2
 
     # objective function
     mdl.minimize(mdl.sum(distance(i,j) * x[(i,j)] for i,j in edges))
@@ -101,7 +92,7 @@ def cplex_solution_indicator(ins, vis = False, time_limit = 1800, verbose = Fals
     y = mdl.continuous_var_dict(edges, name = "y", lb = 0)
     d = mdl.continuous_var_dict(nodes, name = "d", lb = 0)
 
-    M = max(latest) + D.max() + 1
+    M = max(latest) + D.max() * 2
 
     # objective function
     mdl.minimize(mdl.sum(distance(i,j) * x[(i,j)] for i,j in edges))
@@ -168,11 +159,11 @@ def relaxed_cplex_solution(ins, vis = False, time_limit = 1800, verbose = False)
 
     # model and variables
     mdl = Model(ins.name)
-    x = mdl.binary_var_dict(edges, name = "x") #
+    x = mdl.continuous_var_dict(edges, name = "x") #
     y = mdl.continuous_var_dict(edges, name = "y", lb = 0)
     d = mdl.continuous_var_dict(nodes, name = "d", lb = 0)
 
-    M = max(latest) + D.max() + 1
+    M = max(latest) + D.max() * 2
 
     # objective function
     mdl.minimize(mdl.sum(distance(i,j) * x[(i,j)] for i,j in edges))
@@ -203,10 +194,12 @@ def relaxed_cplex_solution(ins, vis = False, time_limit = 1800, verbose = False)
     mdl.parameters.threads = 1 # only one cpu thread in use
     solution = mdl.solve(log_output = False)
 
-    solution_edges = SortedDict()
+    solution_edges = list()
+    intensity = dict()
     for i,j in edges:
-        if x[(i,j)].solution_value > 0.9:
-            solution_edges[j] = i
+        if x[(i,j)].solution_value > 0:
+            solution_edges.append((i,j))
+            intensity[(i,j)] = x[(i,j)].solution_value
 
     objective_value = mdl.objective_value
     time = mdl.solve_details.time
@@ -218,12 +211,15 @@ def relaxed_cplex_solution(ins, vis = False, time_limit = 1800, verbose = False)
         solution.display()
     # to visualize the graph
     if vis:
-        visualize(ins.xcoords, ins.ycoords, solution_edges)
+        visualize_relaxed(ins.xcoords, ins.ycoords, solution_edges, intensity)
 
     return objective_value, time, best_bound, gap
 
 def distance(i,j):
     return D[(i,j)]
 
-if __name__ == "__main__":
+def main():
     pass
+
+if __name__ == "__main__":
+    main()

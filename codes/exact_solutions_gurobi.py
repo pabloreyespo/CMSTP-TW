@@ -2,7 +2,7 @@ import gurobipy as gp
 from gurobipy import GRB
 
 from sortedcollections import SortedDict
-from utilities import visualize
+from utilities import instance, visualize, read_instance, visualize_relaxed
 
 def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
 
@@ -19,7 +19,7 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
     nodes, earliest, latest, demands = gp.multidict({i: (ins.earliest[i], ins.latest[i], ins.demands[i]) for i in ins.nodes })
     nodesv = nodes[1:]
 
-    M =  max(latest) + max(cost.values()) + 1
+    M =  max(latest) + max(cost.values()) * 2
 
     # model and variables
     mdl = gp.Model(ins.name)
@@ -60,7 +60,7 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
 
     time = mdl.Runtime
     best_bound = mdl.ObjBound
-    gap = None # mdl.MIPGap
+    gap = mdl.MIPGap
 
     # to display the solution given by cplex
     # if verbose == True:
@@ -86,11 +86,11 @@ def relaxed_gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False
     nodes, earliest, latest, demands = gp.multidict({i: (ins.earliest[i], ins.latest[i], ins.demands[i]) for i in ins.nodes })
     nodesv = nodes[1:]
 
-    M = max(latest) + max(cost.values()) + 1
+    M = max(latest) + max(cost.values()) * 2
 
     # model and variables
     mdl = gp.Model(ins.name)
-    x = mdl.addVars(edges, vtype = GRB.BINARY, name = "x") #
+    x = mdl.addVars(edges, vtype = GRB.CONTINUOUS, name = "x") #
     y = mdl.addVars(edges, vtype = GRB.CONTINUOUS, name = "y", lb = 0)
     d = mdl.addVars(nodes, vtype = GRB.CONTINUOUS, name = "d", lb = 0)
 
@@ -110,24 +110,23 @@ def relaxed_gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False
 
     solution = mdl.optimize()
 
-    solution_edges = SortedDict()
+    solution_edges = list()
+    intensity = dict()
+
     for i,j in edges:
         if x[i,j].X > 0:
-            solution_edges[j] = i
+            solution_edges.append((i,j))
+            intensity[(i,j)] = x[i,j].X
 
     obj = mdl.getObjective()
     objective_value = obj.getValue()
 
     time = mdl.Runtime
     best_bound = mdl.ObjBound
-    gap = None # mdl.MIPGap
+    gap = None
 
-    # to display the solution given by cplex
-    # if verbose == True:
-    #     solution.display()
-    # to visualize the graph
     if vis:
-        visualize(ins.xcoords, ins.ycoords, solution_edges)
+        visualize_relaxed(ins.xcoords, ins.ycoords, solution_edges, intensity)
 
     return objective_value, time, best_bound, gap
 
@@ -136,4 +135,8 @@ def distance(i,j):
     return D[(i,j)]
 
 if __name__ == "__main__":
+    name, capacity, node_data = read_instance("Instances/rc105.txt")
+    ins = instance(name, capacity, node_data, 100)
+    obj, time, best_bound, gap = relaxed_gurobi_solution(ins, vis = True)
+
     pass

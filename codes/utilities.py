@@ -78,9 +78,9 @@ def visualize(xcoords, ycoords, F):
     fig, ax = plt.subplots(1,1)
 
     # root node
-    ax.scatter(xcoords[0],ycoords[0], color ='green',marker = 'o',s = 275,zorder=2)
+    ax.scatter(xcoords[0],ycoords[0], color ='green',marker = 'o',s = 275, zorder=2)
     # other nodes
-    ax.scatter(xcoords[1:],ycoords[1:], color ='indianred',marker = 'o',s = 275,zorder=2)
+    ax.scatter(xcoords[1:],ycoords[1:], color ='indianred',marker = 'o',s = 275, zorder=2)
 
     # edges activated
 
@@ -88,6 +88,25 @@ def visualize(xcoords, ycoords, F):
         if i != 0:
             j = F[i]
             ax.plot([xcoords[i],xcoords[j]],[ycoords[i],ycoords[j]], color = 'black',linestyle = ':',zorder=1)
+
+    # node label
+    for i in range(len(xcoords)): 
+        plt.annotate(str(i) ,xy = (xcoords[i],ycoords[i]), xytext = (xcoords[i]-0.6,ycoords[i]-0.6), color = 'black', zorder=4)
+
+    plt.show()
+
+def visualize_relaxed(xcoords, ycoords, edges, intensity):
+    fig, ax = plt.subplots(1,1)
+
+    # root node
+    ax.scatter(xcoords[0],ycoords[0], color ='green',marker = 'o',s = 275,zorder=2)
+    # other nodes
+    ax.scatter(xcoords[1:],ycoords[1:], color ='indianred',marker = 'o',s = 275,zorder=2)
+
+    # edges activated
+
+    for i,j in  edges: 
+        ax.plot([xcoords[i],xcoords[j]],[ycoords[i],ycoords[j]], color = 'black', linestyle = ':',zorder=1) #, alpha = intensity[(i,j)])
 
     # node label
     for i in range(len(xcoords)): 
