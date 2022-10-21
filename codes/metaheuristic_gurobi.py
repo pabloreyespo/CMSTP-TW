@@ -411,8 +411,8 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
 
         if verbose: print(it, candidate_cost)
         else:
-            text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
-            print(text, end = "\r")
+            # text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
+            # print(text, end = "\r")
             pass
 
         if feasible: feasible_count += 1
