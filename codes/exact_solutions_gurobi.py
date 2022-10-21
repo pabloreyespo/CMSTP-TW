@@ -1,3 +1,4 @@
+from tokenize import ContStr
 import gurobipy as gp
 from gurobipy import GRB
 
@@ -19,7 +20,7 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
     nodes, earliest, latest, demands = gp.multidict({i: (ins.earliest[i], ins.latest[i], ins.demands[i]) for i in ins.nodes })
     nodesv = nodes[1:]
 
-    M =  max(latest) + max(cost.values()) * 2
+    M = max(latest.values()) + max(cost.values())
 
     # model and variables
     mdl = gp.Model(ins.name)
@@ -85,12 +86,11 @@ def relaxed_gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False
     edges, cost = gp.multidict({(i,j): D[i,j] for (i,j) in ins.edges})
     nodes, earliest, latest, demands = gp.multidict({i: (ins.earliest[i], ins.latest[i], ins.demands[i]) for i in ins.nodes })
     nodesv = nodes[1:]
-
-    M = max(latest) + max(cost.values()) * 2
+    M = max(latest.values()) + max(cost.values())
 
     # model and variables
     mdl = gp.Model(ins.name)
-    x = mdl.addVars(edges, vtype = GRB.CONTINUOUS, name = "x") #
+    x = mdl.addVars(edges, vtype = GRB.CONTINUOUS, name = "x", lb = 0, ub = 1) #
     y = mdl.addVars(edges, vtype = GRB.CONTINUOUS, name = "y", lb = 0)
     d = mdl.addVars(nodes, vtype = GRB.CONTINUOUS, name = "d", lb = 0)
 
@@ -134,9 +134,10 @@ def relaxed_gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False
 def distance(i,j):
     return D[(i,j)]
 
-if __name__ == "__main__":
-    name, capacity, node_data = read_instance("Instances/rc105.txt")
+def main():
+    name, capacity, node_data = read_instance("Instances/c105.txt")
     ins = instance(name, capacity, node_data, 100)
     obj, time, best_bound, gap = relaxed_gurobi_solution(ins, vis = True)
 
-    pass
+if __name__ == "__main__":
+    main()

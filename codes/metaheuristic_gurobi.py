@@ -78,7 +78,7 @@ def branch_gurobi(branch):
     nodes, earliests, latests, demands = gp.multidict({i: (earliest[i], latest[i], 1) for i in nodes })
     nodesv = nodes[1:]
 
-    M = max(latest) + max(cost.values())
+    M = max(latest.values()) + max(cost.values())
 
     # model and variables
     mdl = gp.Model(env = env)

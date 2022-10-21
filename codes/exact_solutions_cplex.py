@@ -1,7 +1,7 @@
 from docplex.mp.model import Model
 from sortedcollections import SortedDict
 
-from utilities import extract_data, visualize, instance, visualize_relaxed
+from utilities import read_instance, visualize, instance, visualize_relaxed
 
 def cplex_solution(ins, vis = False, time_limit = 1800, verbose = False):
 
@@ -12,7 +12,8 @@ def cplex_solution(ins, vis = False, time_limit = 1800, verbose = False):
     Q = ins.capacity
     earliest = ins.earliest
     latest = ins.latest
-    D = ins.D
+    global D
+    D = ins.cost
     demands = ins.demands
 
     # model and variables
@@ -159,7 +160,7 @@ def relaxed_cplex_solution(ins, vis = False, time_limit = 1800, verbose = False)
 
     # model and variables
     mdl = Model(ins.name)
-    x = mdl.continuous_var_dict(edges, name = "x") #
+    x = mdl.continuous_var_dict(edges, name = "x", lb = 0, ub = 1) #
     y = mdl.continuous_var_dict(edges, name = "y", lb = 0)
     d = mdl.continuous_var_dict(nodes, name = "d", lb = 0)
 
@@ -182,7 +183,7 @@ def relaxed_cplex_solution(ins, vis = False, time_limit = 1800, verbose = False)
         mdl.add_constraint(y[(i,j)] <= Q * x[(i,j)]) #  (Q - demands[i]) * x[(i,j)])
 
     for i,j in edges:
-        mdl.add_indicator(x[(i,j)], d[i] + distance(i,j) <= d[j])
+        mdl.add_constraint(d[i] + distance(i,j) - d[j] <= M * (1 - x[(i,j)]))
 
     for i in nodes:
         mdl.add_constraint(d[i] >= earliest[i])
@@ -219,7 +220,10 @@ def distance(i,j):
     return D[(i,j)]
 
 def main():
-    pass
+    name, capacity, node_data = read_instance("Instances/r101.txt")
+    ins = instance(name, capacity, node_data, 100)
+    #obj, time, best_bound, gap = relaxed_cplex_solution(ins, vis = True)
+    obj, time, best_bound, gap = cplex_solution(ins, vis = True)
 
 if __name__ == "__main__":
     main()
