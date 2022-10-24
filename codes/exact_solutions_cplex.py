@@ -22,7 +22,7 @@ def cplex_solution(ins, vis = False, time_limit = 1800, verbose = False):
     y = mdl.continuous_var_dict(edges, name = "y", lb = 0)
     d = mdl.continuous_var_dict(nodes, name = "d", lb = 0)
 
-    M = max(latest) + D.max() * 2
+    M = max(latest) + D.max() 
 
     # objective function
     mdl.minimize(mdl.sum(distance(i,j) * x[(i,j)] for i,j in edges))
@@ -93,7 +93,7 @@ def cplex_solution_indicator(ins, vis = False, time_limit = 1800, verbose = Fals
     y = mdl.continuous_var_dict(edges, name = "y", lb = 0)
     d = mdl.continuous_var_dict(nodes, name = "d", lb = 0)
 
-    M = max(latest) + D.max() * 2
+    M = max(latest) + D.max() 
 
     # objective function
     mdl.minimize(mdl.sum(distance(i,j) * x[(i,j)] for i,j in edges))
@@ -164,7 +164,7 @@ def relaxed_cplex_solution(ins, vis = False, time_limit = 1800, verbose = False)
     y = mdl.continuous_var_dict(edges, name = "y", lb = 0)
     d = mdl.continuous_var_dict(nodes, name = "d", lb = 0)
 
-    M = max(latest) + D.max() * 2
+    M = max(latest) + D.max() 
 
     # objective function
     mdl.minimize(mdl.sum(distance(i,j) * x[(i,j)] for i,j in edges))

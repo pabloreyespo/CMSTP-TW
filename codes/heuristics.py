@@ -1,7 +1,7 @@
 import numpy as np
 from math import inf
 
-from utilities import visualize
+from utilities import *
 from time import perf_counter
 from sortedcollections import SortedDict
 
@@ -12,7 +12,7 @@ def algorithm(ins, b, alpha, s, mu, vis  = False, Q = None, initial = False):
     nodes = ins.nodes
     nnodes = ins.n
     global D
-    D = ins.D
+    D = ins.cost
 
     if Q is None:
         Q = ins.capacity

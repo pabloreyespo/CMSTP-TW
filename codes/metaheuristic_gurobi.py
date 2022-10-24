@@ -78,7 +78,7 @@ def branch_gurobi(branch):
     nodes, earliests, latests, demands = gp.multidict({i: (earliest[i], latest[i], 1) for i in nodes })
     nodesv = nodes[1:]
 
-    M = max(latest.values()) + max(cost.values())
+    M = max(latests.values()) + max(cost.values())
 
     # model and variables
     mdl = gp.Model(env = env)
@@ -104,9 +104,14 @@ def branch_gurobi(branch):
     parent = SortedDict()
     departure = SortedDict()
     for i,j in edges:
-        if x[(i,j)].X > 0:
+        if x[(i,j)].X > 0.9:
             parent[j] = i
             departure[j] = d[j].X
+
+    print()
+    print("parent", parent)
+    print("departure", departure)
+    print()
 
     gate= SortedDict()
     load = { j : 0 for j in parent.keys()}
@@ -411,8 +416,8 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
 
         if verbose: print(it, candidate_cost)
         else:
-            # text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
-            # print(text, end = "\r")
+            text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
+            print(text, end = "\r")
             pass
 
         if feasible: feasible_count += 1

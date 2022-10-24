@@ -96,7 +96,7 @@ def branch_cplex(branch):
     parent = SortedDict()
     departure = SortedDict()
     for i,j in edges:
-        if x[(i,j)].solution_value > 0:
+        if x[(i,j)].solution_value > 0.9:
             parent[j] = i
             departure[j] = d[j].solution_value
 
