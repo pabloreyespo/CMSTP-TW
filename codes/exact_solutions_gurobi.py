@@ -212,9 +212,14 @@ def distance(i,j):
 def main():
     name, capacity, node_data = read_instance("Instances/c105.txt")
     ins = instance(name, capacity, node_data, 100)
+    ins.capacity = 10
     obj, time, best_bound, gap = relaxed_gurobi_solution(ins, vis = True)
     print(relaxed_edges)
+    
     obj, time, best_bound, gap = after_relaxation(ins, relaxed_edges, vis = True)
 
 if __name__ == "__main__":
     main()
+
+# Dada la solución relajada ir reparandola, tomar el subarbol y desde ahi agarrar todos hasta.
+# ¿ Como determinar cual pertence a cada cluster?

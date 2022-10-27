@@ -3,6 +3,7 @@ from metaheuristic_gurobi import ILS_solution
 from utilities import read_instance, instance
 import os
 from math import inf
+import numpy as np
 
 def test(cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param ,iterMax, nombre):
     
@@ -19,6 +20,7 @@ def test(cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param ,iterMax
         solution_sum = 0
         for i in range(10):
             obj, time, best_bound, gap = ILS_solution(ins, semilla = i, pa = pa , pb = pb, lsp = lsp, 
+                    b = np.array([1,0,1,0.2,0.4,0]), mu = 1, alpha = 1,
                     feasibility_param= f_param,elite_param=e_param, elite_revision_param = elite_search_param,iterMax = iterMax) 
             if obj < best_obj:
                 best_obj = obj
@@ -34,4 +36,4 @@ if __name__ == "__main__":
     caps = [10000,20,15,10,5]
     nnodes = 100
     for cap in caps:
-        test(cap, nnodes, 0.4, 0.6, 0.8, 250, 100, 1500, 15000, f"Experimento 7 Q-{cap}")
+        test(cap, nnodes, 0.4, 0.6, 0.8, 250, 100, 1500, 15000, f"Experimento 8 Q-{cap}")

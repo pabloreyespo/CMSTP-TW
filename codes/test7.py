@@ -7,7 +7,6 @@ from math import inf
 def test(cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param ,iterMax, nombre):
     
     instances = os.listdir("instances")
-    instances = ["rc105.txt"]
     results = list()
     for inst in instances:
         print(f"{inst}-Q{cap}")
@@ -18,9 +17,10 @@ def test(cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param ,iterMax
         best_obj = inf
         time_sum = 0
         solution_sum = 0
-        for i in range(1,10):
+        for i in range(10):
             obj, time, best_bound, gap = ILS_solution(ins, semilla = i, pa = pa , pb = pb, lsp = lsp, 
                     feasibility_param= f_param,elite_param=e_param, elite_revision_param = elite_search_param,iterMax = iterMax) 
+                    
             if obj < best_obj:
                 best_obj = obj
             time_sum += time

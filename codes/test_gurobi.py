@@ -23,4 +23,4 @@ if __name__ == "__main__":
     caps = [10000,20,15,10,5]
     nnodes = 100
     for cap in caps:
-        test(cap, nnodes, f"CPLEX Q-{cap}")
+        test(cap, nnodes, f"GUROBI Q-{cap}")
