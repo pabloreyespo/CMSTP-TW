@@ -4,6 +4,7 @@ from math import inf
 from utilities import *
 from time import perf_counter
 from sortedcollections import SortedDict
+from numpy.random import random
 
 def distance(i,j):
     return D[(i,j)]
@@ -194,6 +195,126 @@ def prim_solution(ins, vis  = False):
     gap = None
     return cost, time, best_bound, gap
 
+def random_prim_solution(ins, Q = None, vis  = False):
+
+    global D
+    D = ins.cost
+
+    if Q is None:
+        Q = ins.capacity
+
+    earliest = ins.earliest
+    latest = ins.latest
+
+    nodes = ins.nodes # ignore demand
+    start = perf_counter()
+    nnodes = len(nodes)
+
+    pred = SortedDict()
+    arrival_time = SortedDict()
+    waiting_time = SortedDict()
+    gate = SortedDict()
+    load = SortedDict()
+    for i in range(nnodes):
+        pred[i] = -1
+        arrival_time[i] = 0
+        waiting_time[i] = 0
+        gate[i] = 0
+        load[i] = 0
+
+    itree = set() # muestra que es lo ultimo que se ha añadido
+    nodes_left = set(nodes)
+
+    d = inf
+    for j in nodes[1:]:
+        if distance(0,j) < d:
+            d = distance(0,j)
+            v = j
+
+    itree.add(0) #orden en que son nombrados
+    itree.add(v)
+    nodes_left.remove(0)
+    nodes_left.remove(v)
+
+    gate[v] = v
+    load[gate[v]] += 1
+    pred[v] = 0
+    arrival_time[v] = cost = d
+    waiting_time[v] = 0
+
+    if not  arrival_time[v] >= earliest[v]:
+        waiting_time[v] = earliest[v]- arrival_time[v]
+        arrival_time[v] = earliest[v]
+
+
+    while len(nodes_left) > 0:
+        min_tree = [inf]
+        kk = [-1]
+        jj = [-1]
+        for j in nodes_left:
+            min_node = inf
+            for ki in itree:# k: parent, j: offspring
+                # calcula si alcanza a llegar desde alguno de los nodos que ya estan colocados
+                dkj = distance(ki,j)
+                # criterion = dkj
+                tj = arrival_time[ki] + dkj
+                Qj = load[gate[ki]]
+
+                if tj <= latest[j] and Qj < Q: # isFeasible() # reescribir
+
+                    if tj < earliest[j]:
+                        tj = earliest[j]
+
+                    crit_node = dkj
+                    if crit_node < min_node:
+                        min_node = crit_node
+                        k = ki
+                
+            ### best of the node
+            crit_tree = crit_node
+
+            if crit_tree < min_tree[-1]:
+                    kk.append(k)
+                    jj.append(j)
+                    min_tree.append(crit_tree)
+        
+        pos = -1
+        while True:
+            if random() < 0.5 or abs(pos) == len(jj) - 1:
+                break
+            else:
+                pos -= 1
+
+        jj = jj[pos]
+        kk = kk[pos]
+        min_tree = min_tree[pos]
+
+        itree.add(jj)
+        nodes_left.remove(jj)
+        pred[jj] = kk
+        # visualize(ins.xcoords, ins.ycoords, pred)
+        cost += distance(kk,jj)
+        if gate[kk] == 0:
+            gate[jj] = jj
+        else:
+            gate[jj] = gate[kk]
+        load[gate[jj]] += 1
+        
+        arrival_time[jj] = arrival_time[kk] + distance(kk,jj)
+
+        
+        if not arrival_time[jj] >= earliest[jj]:
+            waiting_time[jj] = earliest[jj] - arrival_time[jj]
+            arrival_time[jj] = earliest[jj]
+
+    time = perf_counter() - start
+
+    if vis:
+        visualize(ins.xcoords, ins.ycoords, pred)
+    best_bound = None
+    gap = None
+    return cost, time, best_bound, gap
+
 def SGH_solution(ins, vis  = False, initial = False):
     return algorithm(ins, b = np.array([1,0,0,0,0,0]), alpha = 0, s = 0, mu = 0, vis  = vis, Q = 10000000, initial = initial)
 
@@ -206,5 +327,13 @@ def ESGH_solution(ins, vis  = False, initial = False, b = np.array([1,0,1,0.2,0.
 def LPDH_solution(ins,  vis  = False, initial = False, b = np.array([1,0,1,0.2,0.4,0]), alpha = 1, s = 7, mu = 1):
     return algorithm(ins,  b = b, alpha = alpha, s = s, mu = mu, vis  = vis, initial = initial)
 
+def main():
+    name, capacity, node_data = read_instance(f"instances/c101.txt")
+    ins = instance(name, capacity, node_data, 100)
+    ins.capacity = 20
+
+    obj, time, best_bound, gap = random_prim_solution(ins, vis = True)
+    print(obj, time, best_bound, gap)
+
 if __name__ == "__main__":
-    pass
+    main()
