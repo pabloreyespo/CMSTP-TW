@@ -373,6 +373,7 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
 
     start = perf_counter()
     s, cost_best = LPDH_solution(ins,b = np.array(b), alpha = alpha ,mu = mu,  vis = False, initial = True)
+    s_inicial, cost_inicial = (s[0].copy(), s[1].copy(), s[2].copy(), s[3].copy()), cost_best
     candidate_cost = cost_best
     cost_best_unfeasible = inf
     feasible = True
@@ -399,9 +400,13 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
         if feasible:
             if cost_best > candidate_cost:
                 s_best = (s[0].copy(), s[1].copy(), s[2].copy(), s[3].copy())
-                elite[candidate_cost] = [ (s[0].copy(), s[1].copy(), s[2].copy(), s[3].copy()), False]
+                
+                
                 cost_best = candidate_cost
                 best_it = it + 1
+            # print(elite.keys()[-1])
+            # if elite.keys()[-1]  > candidate_cost:
+                elite[candidate_cost] = [ (s[0].copy(), s[1].copy(), s[2].copy(), s[3].copy()), False]
                 if len(elite) > elite_size: 
                     elite.popitem()
         else:
@@ -411,8 +416,8 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
 
         if verbose: print(it, candidate_cost)
         else:
-            # text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
-            # print(text, end = "\r")
+            #text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
+            #print(text, end = "\r")
             pass
 
         if feasible: feasible_count += 1
@@ -456,6 +461,7 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
 
                     mejoras += 1
             # print("revisiòn lista")
+
     
     time = perf_counter() - start
     best_bound = None
@@ -470,14 +476,15 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
 
 def main():
     # hacer que esto pase a trabajar con un vector s que consta de [P, gate, load]
-    name, capacity, node_data = read_instance("instances/rc105.txt")
+    name, capacity, node_data = read_instance("Instances/r102.txt")
     ins = instance(name, capacity, node_data, 100)
-    ins.capacity = 20
+    ins.capacity = 10
     #for i in range(10):
     obj, time, best_bound, gap = ILS_solution(
-        ins, semilla = 0, feasibility_param = 100, elite_param= 250,
+        ins, semilla = 0, feasibility_param = 1000, elite_param= 2500,
         p  = 0, b = [1,0,0,0,0,0], mu  = 0, elite_size = 20,
-        iterMax = 15000, elite_revision_param = 1500, vis = True, verbose = False) # ,0, pruffer_encode, pruffer_decode
+        iterMax = 30000, elite_revision_param = 1500, vis = True, verbose = False) # ,0, pruffer_encode, pruffer_decode
+    print(obj, time, best_bound, gap)
     
     return None
 
@@ -487,3 +494,17 @@ if __name__ == "__main__":
 # hacer un archivo que solo funcione con gurobi y otro solo con cplex
 # darle una vuelta al relajamiento
 # ejecutar todo de nuevo: cplex, gurobi, [7], [8]
+
+# la mejor solucion, la mejor por reseteo,
+# hacer experimento con la elite, c/!00, 
+
+
+
+# Experimento gurobi corriendo 20 y 40 segundos
+# experimento en que demoran ambos 1 minuto
+
+# Experimento 11 pero con el prim aleatorio
+# Experimento: 11 pero cambiandole los paeametros
+# Experimento: Agregar a la elite respecto de la peor de la elite, sin reseteo, resoectoal anterior
+# luego lo msmo pero con la mediana
+# ver que pasa si se corre, luego encontramos una mejor solución y luego se da

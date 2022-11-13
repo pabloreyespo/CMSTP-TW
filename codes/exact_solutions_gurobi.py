@@ -210,13 +210,12 @@ def distance(i,j):
     return D[(i,j)]
 
 def main():
-    name, capacity, node_data = read_instance("Instances/c105.txt")
+    name, capacity, node_data = read_instance("Instances/r102.txt")
     ins = instance(name, capacity, node_data, 100)
     ins.capacity = 10
-    obj, time, best_bound, gap = relaxed_gurobi_solution(ins, vis = True)
-    print(relaxed_edges)
-    
-    obj, time, best_bound, gap = after_relaxation(ins, relaxed_edges, vis = True)
+    # obj, time, best_bound, gap = relaxed_gurobi_solution(ins, vis = True)    
+    obj, time, best_bound, gap = gurobi_solution(ins, vis = True)
+    print(obj, time, best_bound, gap)
 
 if __name__ == "__main__":
     main()
