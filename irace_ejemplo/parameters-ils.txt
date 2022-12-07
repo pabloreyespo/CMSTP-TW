@@ -1,0 +1,5 @@
+### Parameter file for the PTSP software
+# name       switch           type values               [conditions (using R syntax)]
+Prob1		"-a "             r    (0.00, 1.0)
+Prob2   	"-b "             r    (0.00, 1.0)
+Prob3       "-c "             r    (0.01, 0.15)

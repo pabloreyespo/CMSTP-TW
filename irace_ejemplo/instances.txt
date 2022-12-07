@@ -1,0 +1,4 @@
+# Example training instances file
+instances/gr17.tsp
+instances/gr21.tsp
+#instances/gr24.tsp
