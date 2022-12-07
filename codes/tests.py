@@ -119,3 +119,4 @@ if __name__ == "__main__":
         # final_test(10**6, 10**6, 0.5, cap, f"ILS Penalización Q{cap}")
         # final_test(10**6, 100, 0.5, cap, f"ILS Penalización e Infactibles Q{cap}")
         # final_test(250, 100, 0.5, cap, f"ILS Penalización y Elite Q{cap}")
+
