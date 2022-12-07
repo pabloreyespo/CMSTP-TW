@@ -25,129 +25,108 @@ env = gp.Env(empty=True)
 env.setParam("OutputFlag",0)
 env.start()
 
-def random_prim_solution(ins, Q = None, vis  = False):
+def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initial = False):
 
+    nnodes = ins.n
+
+    Q = ins.capacity
+    earliest = ins.earliest
+    latest = ins.latest
+    demands = ins.demands
     global D
     D = ins.cost
 
-    if Q is None:
-        Q = ins.capacity
+    edges, cost = gp.multidict({(i,j): D[i,j] for (i,j) in ins.edges})
+    nodes, earliest, latest, demands = gp.multidict({i: (ins.earliest[i], ins.latest[i], ins.demands[i]) for i in ins.nodes })
+    nodesv = nodes[1:]
 
-    earliest = ins.earliest
-    latest = ins.latest
+    M = max(latest.values()) + max(cost.values())
 
-    nodes = ins.nodes # ignore demand
-    start = perf_counter()
-    nnodes = len(nodes)
+    # model and variables
+    if not verbose:
+        mdl = gp.Model(env = env)
+    else:
+        mdl = gp.Model()
+    x = mdl.addVars(edges, vtype = GRB.BINARY, name = "x") #
+    y = mdl.addVars(edges, vtype = GRB.CONTINUOUS, name = "y", lb = 0)
+    d = mdl.addVars(nodes, vtype = GRB.CONTINUOUS, name = "d", lb = 0)
 
-    pred = SortedDict()
-    arrival_time = SortedDict()
-    waiting_time = SortedDict()
-    gate = SortedDict()
-    load = SortedDict()
-    for i in range(nnodes):
-        pred[i] = -1
-        arrival_time[i] = 0
-        waiting_time[i] = 0
-        gate[i] = 0
-        load[i] = 0
+    mdl.setObjective(x.prod(cost))
 
-    itree = set() # muestra que es lo ultimo que se ha añadido
-    nodes_left = set(nodes)
+    R1 = mdl.addConstrs((gp.quicksum(x[(i,j)] for i in nodes if i!=j) == 1 for j in nodesv),name = "R1")
+    # restrictions
+    R2 = mdl.addConstrs((gp.quicksum(y[(i,j)] for i in nodes if i!=j) - gp.quicksum(y[(j,i)] for i in nodesv if i!=j) == demands[j] for j in nodesv), name = "R2")
 
-    d = inf
-    for j in nodes[1:]:
-        if distance(0,j) < d:
-            d = distance(0,j)
-            v = j
+    R3 = mdl.addConstrs((x[(i,j)] <= y[(i,j)] for i,j in edges),name = "R3")
 
-    itree.add(0) #orden en que son nombrados
-    itree.add(v)
-    nodes_left.remove(0)
-    nodes_left.remove(v)
+    # R4 = mdl.addConstrs((y[(i,j)] <= (Q - demands[i]) * x[(i,j)] for i,j in edges), name = "R4")
+    R4 = mdl.addConstrs((y[(i,j)] <= Q * x[(i,j)] for i,j in edges), name = "R4")
 
-    gate[v] = v
-    load[gate[v]] += 1
-    pred[v] = 0
-    arrival_time[v] = cost = d
-    waiting_time[v] = 0
+    R5 = mdl.addConstrs((d[i] + cost[(i,j)] - d[j] <= M * (1 - x[(i,j)]) for i,j in edges), name = "R5")
 
-    if not  arrival_time[v] >= earliest[v]:
-        waiting_time[v] = earliest[v]- arrival_time[v]
-        arrival_time[v] = earliest[v]
+    R6 = mdl.addConstrs((d[i] >= earliest[i] for i in nodes), name = "R6")
+
+    R7 = mdl.addConstrs((d[i] <= latest[i] for i in nodes), name = "R7")
 
 
-    while len(nodes_left) > 0:
-        min_tree = [inf]
-        kk = [-1]
-        jj = [-1]
-        for j in nodes_left:
-            min_node = inf
-            for ki in itree:# k: parent, j: offspring
-                # calcula si alcanza a llegar desde alguno de los nodos que ya estan colocados
-                dkj = distance(ki,j)
-                # criterion = dkj
-                tj = arrival_time[ki] + dkj
-                Qj = load[gate[ki]]
+    mdl.Params.TimeLimit = time_limit
+    mdl.Params.Threads = 1
 
-                if tj <= latest[j] and Qj < Q: # isFeasible() # reescribir
+    solution = mdl.optimize()
 
-                    if tj < earliest[j]:
-                        tj = earliest[j]
+    obj = mdl.getObjective()
+    objective_value = obj.getValue()
 
-                    crit_node = dkj
-                    if crit_node < min_node:
-                        min_node = crit_node
-                        k = ki
-                
-            ### best of the node
-            crit_tree = crit_node
+    if not initial:
 
-            if crit_tree < min_tree[-1]:
-                    kk.append(k)
-                    jj.append(j)
-                    min_tree.append(crit_tree)
+        time = mdl.Runtime
+        best_bound = mdl.ObjBound
+        gap = mdl.MIPGap
+
+        if vis:
+            solution_edges = SortedDict()
+            for i,j in edges:
+                if x[i,j].X > 0.9:
+                    solution_edges[j] = i
+            visualize(ins.xcoords, ins.ycoords, solution_edges)
+
+        return objective_value, time, best_bound, gap
+
+    else: 
+        parent = SortedDict()
+        departure = SortedDict()
+        gate= SortedDict()
+        arrival = SortedDict()
         
-        pos = -1
-        while True:
-            if random() < 0.5 or abs(pos) == len(jj) - 1:
-                break
-            else:
-                pos -= 1
-
-        jj = jj[pos]
-        kk = kk[pos]
-        min_tree = min_tree[pos]
-
-        itree.add(jj)
-        nodes_left.remove(jj)
-        pred[jj] = kk
-        # visualize(ins.xcoords, ins.ycoords, pred)
-        cost += distance(kk,jj)
-        if gate[kk] == 0:
-            gate[jj] = jj
-        else:
-            gate[jj] = gate[kk]
-        load[gate[jj]] += 1
         
-        arrival_time[jj] = arrival_time[kk] + distance(kk,jj)
+        parent[0] = -1
+        departure[0] = 0
+        gate[0] = 0
+        arrival[0] = 0
+        for i,j in edges:
+            if x[(i,j)].X > 0.9:
+                parent[j] = i
+                departure[j] = d[j].X
 
         
-        if not arrival_time[jj] >= earliest[jj]:
-            waiting_time[jj] = earliest[jj] - arrival_time[jj]
-            arrival_time[jj] = earliest[jj]
-
-    time = perf_counter() - start
-
-    if vis:
-        visualize(ins.xcoords, ins.ycoords, pred)
-    best_bound = None
-    gap = None
-    return  (pred, gate, load, arrival_time) , cost
+        load = { j : 0 for j in parent.keys()}
+        
+        for j in sorted(parent.keys(), key = lambda x: departure[x]):
+            if j != 0:
+                i = parent[j]
+                if i == 0:
+                    gate[j] = j
+                else:
+                    gate[j] = gate[i]
+                load[gate[j]] += 1
+                arrival[j] = arrival[i] + distance(i,j)
+                if arrival[j] < earliest[j]:
+                    arrival[j] = earliest[j]
+        return (parent, gate, load, arrival), objective_value
 
 def ILS_solution_timelimit(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu = 0, alpha = 0,
                 feasibility_param = 100, elite_param = 250, elite_size = 20, iterMax = 15000, p = PENALIZATION,
-                pa = PERTURBATION_A, pb = PERTURBATION_B, lsp = LOCAL_SEARCH_PARAM,
+                pa = PERTURBATION_A, pb = PERTURBATION_B, lsp = LOCAL_SEARCH_PARAM, initial_solution = None,
                 elite_revision_param = 1500, vis  = False, verbose = False, time_limit = 60):
     
     if semilla is not None:
@@ -169,7 +148,10 @@ def ILS_solution_timelimit(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,
     latest = ins.latest
 
     start = perf_counter()
-    s, cost_best = LPDH_solution(ins,b = np.array(b), alpha = alpha ,mu = mu,  vis = False, initial = True)
+    if initial_solution is None:
+        s, cost_best = LPDH_solution(ins,b = np.array(b), alpha = alpha ,mu = mu,  vis = False, initial = True)
+    else:
+        s, cost_best = initial_solution(ins)
     s_inicial, cost_inicial = (s[0].copy(), s[1].copy(), s[2].copy(), s[3].copy()), cost_best
     candidate_cost = cost_best
     cost_best_unfeasible = inf
@@ -198,7 +180,6 @@ def ILS_solution_timelimit(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,
             if cost_best > candidate_cost:
                 s_best = (s[0].copy(), s[1].copy(), s[2].copy(), s[3].copy())
                 
-                
                 cost_best = candidate_cost
                 best_it = it + 1
             # print(elite.keys()[-1])
@@ -213,9 +194,9 @@ def ILS_solution_timelimit(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,
 
         if verbose: print(it, candidate_cost)
         else:
-            #text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
-            #print(text, end = "\r")
-            pass
+            text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
+            print(text, end = "\r")
+            
 
         if feasible: feasible_count += 1
         else: unfeasible_count += 1
@@ -242,7 +223,7 @@ def ILS_solution_timelimit(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,
                 ss, rev = elite[cost]
                 if not rev:
                     ss, cost_after, feasible = optimal_branch((ss[0].copy(), ss[1].copy(), ss[2].copy(), ss[3].copy()))
-                    # print(cost, "->", cost_after)
+                    print(cost, "->", cost_after)
                     elite[cost][1] = True
                     if feasible and cost_after < cost:
                         elite[cost_after] = [(ss[0].copy(), ss[1].copy(), ss[2].copy(), ss[3].copy()), True]
@@ -602,7 +583,9 @@ def distance(i,j):
     return D[(i,j)]
 
 
-def test(cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param , time_limit, nombre):
+
+
+def test(cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param , time_limit, gurobi_time, nombre):
     
     instances = os.listdir("instances")
     results = list()
@@ -615,9 +598,11 @@ def test(cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param , time_l
         best_obj = inf
         time_sum = 0
         solution_sum = 0
+
         for i in range(10):
-            obj, time, best_bound, gap = ILS_solution(ins, semilla = i, pa = pa , pb = pb, lsp = lsp, 
-                    feasibility_param= f_param,elite_param=e_param, elite_revision_param = elite_search_param,time_limit=time_limit) 
+            initial_solution = lambda x: gurobi_solution(x, vis = False, time_limit= gurobi_time, verbose = True, initial=True)
+            obj, time, best_bound, gap = ILS_solution_timelimit(ins, semilla = i, pa = pa , pb = pb, lsp = lsp, 
+                    feasibility_param= f_param,elite_param=e_param, elite_revision_param = elite_search_param,time_limit=time_limit, initial_solution=initial_solution, vis = True) 
             if obj < best_obj:
                 best_obj = obj
             time_sum += time
@@ -628,8 +613,21 @@ def test(cap, nnodes ,pa, pb, lsp, e_param, f_param, elite_search_param , time_l
     df = pd.DataFrame(results)
     df.to_excel(f"{nombre}.xlsx", index= False)
 
+def main():
+
+    name, capacity, node_data = read_instance(f"instances/c205.txt")
+    ins = instance(name, capacity, node_data, 100)
+    ins.capacity = 5
+    initial_solution = lambda x: gurobi_solution(x, vis = False, time_limit= 20, verbose = True, initial=True)
+    obj, time, best_bound, gap = ILS_solution_timelimit(ins,semilla = 0, pa = 0.4 , pb = 0.6, lsp = 0.8, 
+                    feasibility_param= 1000,elite_param=2500, elite_revision_param = 1500, time_limit=60, initial_solution = initial_solution) 
+
 if __name__ == "__main__":
-    caps = [10000,20,15,10,5]
-    nnodes = 100
-    for cap in caps:
-        test(cap, nnodes, 0.4, 0.6, 0.8, 1000, 2500, 1500,time_limit=60, nombre = f"Experimento 10 Q-{cap}")
+    # caps = [10000,20,15,10,5]
+    # nnodes = 100
+    # for cap in caps:
+    #     test(cap, nnodes, 0.4, 0.6, 0.8, 1000, 2500, 1500,time_limit=60, gurobi_time=10, nombre = f"GUROBI INICIAL 10s + ILS Q-{cap}")
+    #     test(cap, nnodes, 0.4, 0.6, 0.8, 1000, 2500, 1500,time_limit=60, gurobi_time=20, nombre = f"GUROBI INICIAL 20s + ILS Q-{cap}")
+    #     test(cap, nnodes, 0.4, 0.6, 0.8, 1000, 2500, 1500,time_limit=60, gurobi_time=30, nombre = f"GUROBI INICIAL 30s + ILS Q-{cap}")
+
+    main()

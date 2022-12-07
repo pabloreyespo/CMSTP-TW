@@ -5,7 +5,7 @@ from gurobipy import GRB
 from sortedcollections import SortedDict
 from utilities import instance, visualize, read_instance, visualize_relaxed
 
-def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
+def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initial = False):
 
     nnodes = ins.n
 
@@ -51,26 +51,49 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
 
     solution = mdl.optimize()
 
-    solution_edges = SortedDict()
-    for i,j in edges:
-        if x[i,j].X > 0.9:
-            solution_edges[j] = i
-
     obj = mdl.getObjective()
     objective_value = obj.getValue()
 
-    time = mdl.Runtime
-    best_bound = mdl.ObjBound
-    gap = mdl.MIPGap
+    if not initial:
 
-    # to display the solution given by cplex
-    # if verbose == True:
-    #     solution.display()
-    # to visualize the graph
-    if vis:
-        visualize(ins.xcoords, ins.ycoords, solution_edges)
+        time = mdl.Runtime
+        best_bound = mdl.ObjBound
+        gap = mdl.MIPGap
 
-    return objective_value, time, best_bound, gap
+        if vis:
+            solution_edges = SortedDict()
+            for i,j in edges:
+                if x[i,j].X > 0.9:
+                    solution_edges[j] = i
+            visualize(ins.xcoords, ins.ycoords, solution_edges)
+
+        return objective_value, time, best_bound, gap
+
+    else: 
+        parent = SortedDict()
+        departure = SortedDict()
+        for i,j in edges:
+            if x[(i,j)].X > 0.9:
+                parent[j] = i
+                departure[j] = d[j].X
+
+        gate= SortedDict()
+        load = { j : 0 for j in parent.keys()}
+        arrival = SortedDict()
+        arrival[0] = 0
+        for j in sorted(parent.keys(), key = lambda x: departure[x]):
+            if j != 0:
+                i = parent[j]
+                if i == 0:
+                    gate[j] = j
+                else:
+                    gate[j] = gate[i]
+                load[gate[j]] += 1
+                arrival[j] = arrival[i] + distance(i,j)
+                if arrival[j] < earliest[j]:
+                    arrival[j] = earliest[j]
+
+        return (parent, gate, load, arrival), objective_value
 
 def relaxed_gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
 

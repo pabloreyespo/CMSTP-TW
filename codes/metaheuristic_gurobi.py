@@ -350,6 +350,132 @@ def best_father(s): #perturbation 1
 def local_search(s):
     return best_father(s)
 
+def ILS_solution_timelimit(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu = 0, alpha = 0,
+                feasibility_param = 100, elite_param = 250, elite_size = 20, iterMax = 15000, p = PENALIZATION,
+                pa = PERTURBATION_A, pb = PERTURBATION_B, lsp = LOCAL_SEARCH_PARAM,
+                elite_revision_param = 1500, vis  = False, verbose = False, time_limit = 60):
+    
+    if semilla is not None:
+        np.random.seed(semilla)
+        seed(semilla)
+
+    start = perf_counter()
+
+    global PENALIZATION, Q, earliest, latest, PERTURBATION_A, PERTURBATION_B, LOCAL_SEARCH_PARAM, D
+    PENALIZATION = p
+    PERTURBATION_A = pa
+    PERTURBATION_B = pb
+    LOCAL_SEARCH_PARAM = lsp
+
+    D = ins.cost
+    Q = ins.capacity
+    
+    earliest = ins.earliest
+    latest = ins.latest
+
+    start = perf_counter()
+    s, cost_best = LPDH_solution(ins,b = np.array(b), alpha = alpha ,mu = mu,  vis = False, initial = True)
+    s_inicial, cost_inicial = (s[0].copy(), s[1].copy(), s[2].copy(), s[3].copy()), cost_best
+    candidate_cost = cost_best
+    cost_best_unfeasible = inf
+    feasible = True
+
+    s_best = (s[0].copy(), s[1].copy(), s[2].copy(), s[3].copy())
+    s_best_unfeasible = None
+
+    best_it = 0
+    feasible_count = 1
+    unfeasible_count = 0
+    mejoras = 0
+
+    costs_list = [cost_best]
+    bestCosts_list = [cost_best]
+    solutions_list = [s_best]
+    feasibility_list = [feasible]
+
+    elite = SortedDict()
+    elite[cost_best] = [(s[0].copy(), s[1].copy(), s[2].copy(), s[3].copy()),False]
+    it = 0
+    while perf_counter() -  start < time_limit:
+        s = perturbation(s)
+        s, candidate_cost, feasible = local_search(s)
+        if feasible:
+            if cost_best > candidate_cost:
+                s_best = (s[0].copy(), s[1].copy(), s[2].copy(), s[3].copy())
+                
+                
+                cost_best = candidate_cost
+                best_it = it + 1
+            # print(elite.keys()[-1])
+            # if elite.keys()[-1]  > candidate_cost:
+                elite[candidate_cost] = [ (s[0].copy(), s[1].copy(), s[2].copy(), s[3].copy()), False]
+                if len(elite) > elite_size: 
+                    elite.popitem()
+        else:
+            if cost_best_unfeasible > candidate_cost:
+                s_best_unfeasible = (s[0].copy(), s[1].copy(), s[2].copy(), s[3].copy())
+                cost_best_unfeasible = candidate_cost
+
+        if verbose: print(it, candidate_cost)
+        else:
+            #text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
+            #print(text, end = "\r")
+            pass
+
+        if feasible: feasible_count += 1
+        else: unfeasible_count += 1
+
+        costs_list.append(candidate_cost)
+        bestCosts_list.append(cost_best)
+        solutions_list.append(s)
+        feasibility_list.append(feasible)
+
+        if abs(cost_best - candidate_cost) / cost_best > acceptance or not feasible:
+            s = (s_best[0].copy(), s_best[1].copy(), s_best[2].copy(), s_best[3].copy())
+        
+        if (it + 1) % feasibility_param == 0:
+            try: s = (s_best_unfeasible[0].copy(), s_best_unfeasible[1].copy(), s_best_unfeasible[2].copy(), s_best_unfeasible[3].copy())
+            except: s = s
+
+        if (it + 1) % elite_param == 0:
+            x = choice(elite.values())
+            x = x[0]
+            s = (x[0].copy(), x[1].copy(), x[2].copy(), x[3].copy())
+
+        if (it + 1) % elite_revision_param == 0:
+            for cost in elite:
+                ss, rev = elite[cost]
+                if not rev:
+                    ss, cost_after, feasible = optimal_branch((ss[0].copy(), ss[1].copy(), ss[2].copy(), ss[3].copy()))
+                    # print(cost, "->", cost_after)
+                    elite[cost][1] = True
+                    if feasible and cost_after < cost:
+                        elite[cost_after] = [(ss[0].copy(), ss[1].copy(), ss[2].copy(), ss[3].copy()), True]
+
+                        if cost_after < cost_best:
+                            s_best = (ss[0].copy(), ss[1].copy(), ss[2].copy(), ss[3].copy())
+                            cost_best = cost_after
+                            best_it = it + 1
+
+                    while len(elite) > elite_size:
+                        # print("size elite: ", len(elite))
+                        elite.popitem()
+
+                    mejoras += 1
+            # print("revisiòn lista")
+        it += 1
+    
+    time = perf_counter() - start
+    best_bound = None
+    gap = None
+
+    if vis: visualize(ins.xcoords, ins.ycoords, s_best[0])
+    if not verbose:
+        text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] best: {cost_best:8^.3f} time: {time:.2f} best iteration: {best_it}'
+        print(text)
+
+    return cost_best, time, best_bound, gap
+
 def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu = 0, alpha = 0,
                 feasibility_param = 100, elite_param = 250, elite_size = 20, iterMax = 15000, p = PENALIZATION,
                 pa = PERTURBATION_A, pb = PERTURBATION_B, lsp = LOCAL_SEARCH_PARAM,
