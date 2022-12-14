@@ -1,0 +1,14 @@
+### Parameter file for the PTSP software
+# name              switch          type values               [conditions (using R syntax)]
+acceptance          "-a "           r    (0.00, 0.20)
+feasibility_param   "-f "           o    (1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000)
+elite_param         "-e "           o    (1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000)
+size_elite          "-s "           o    (10, 15, 20, 25, 30, 35, 40, 45, 50)
+penalization        "-n "           r    (0.00, 10.00)
+prob1               "-x "           r    (0.00, 1.00)
+prob2               "-y "           r    (0.00, 1.00)
+prob3               "-z "           r    (0.00, 1.00)
+revision_param      "-r "           o    (1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000)
+local_search        "-l "           r    (0.00, 1.00)
+time_branch         "-t "           i    (1, 5)
+gurobi_time         "-g "           o    (10, 15, 20, 25, 30)

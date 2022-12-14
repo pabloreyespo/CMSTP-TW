@@ -1,0 +1,15 @@
+## Template for specifying initial parameter configurations, for
+## example, the default configuration, in irace.
+##
+## This filename must be specified via the --configurations-file command-line option
+## (or configurationsFile in scenario.txt).
+##
+## The format is one parameter configuration per line, and one parameter per
+## column. The first line gives the parameter name corresponding to
+## each column (names must match those given in the parameters
+## file). Each configuration must satisfy the
+## parameter conditions (NA should be used for those parameters that
+## are not enabled for a given configuration) and, if given, the
+## constraints that describe forbidden configurations.
+acceptance feasibility_param elite_param size_elite penalization prob1 prob2 prob3 revision_param local_search time_branch gurobi_time
+0.05 1000 2500 20 0.5 0.4 0.2 0.4 1500 0.8 1 30

@@ -14,6 +14,7 @@ semilla = 0
 Prob1 = 0.0
 Prob2 = 0.0
 Prob3 = 0.0
+
 # distancia entre la ciudad i y j
 def distancia(i, j):
     u = i, j
