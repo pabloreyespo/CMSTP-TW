@@ -425,8 +425,8 @@ def ILS_solution_timelimit(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,
 
         if verbose: print(it, candidate_cost)
         else:
-            # text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
-            # print(text, end = "\r")
+            text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
+            print(text, end = "\r")
             pass
         
         #if feasible: feasible_count += 1
@@ -549,8 +549,8 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
 
         if verbose: print(it, candidate_cost)
         else:
-            #text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
-            #print(text, end = "\r")
+            text = f'{it+1:^6}/{iterMax} [{"#"*((it+1)*50//iterMax):<50}] cost: {candidate_cost:^8.3f} best: {cost_best:8^.3f}'
+            print(text, end = "\r")
             pass
 
         if feasible: feasible_count += 1
@@ -608,6 +608,20 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
     return cost_best, time, best_bound, gap
 
 def main():
+    name, capacity, node_data = read_instance("gehring instances/1000/C1_10_1.TXT")
+    ins = instance(name, capacity, node_data, 500)
+    ins.capacity = 10
+    tim = 0
+
+    # generate_solution = lambda x: gurobi_solution(x, vis = False, time_limit= tim, verbose = True, initial=True)
+    # (parent, gate, load, arrival), objective_value= generate_solution(ins)
+    # initial_solution = lambda x: ((parent.copy(), gate.copy(), load.copy(), arrival.copy()), objective_value)
+
+    obj, time, best_bound, gap = ILS_solution_timelimit(
+            ins, semilla = 0, acceptance = 0.05,
+            feasibility_param = 1000, elite_param = 2500, elite_size = 20, p = 0.5,
+            pa = 0.4, pb = 0.6, lsp = 0.8, initial_solution = None, #   initial_solution,
+            elite_revision_param = 1500 , vis  = True, verbose = False, time_limit = 180 - tim)
     pass
 
 

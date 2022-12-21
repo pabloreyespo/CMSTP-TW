@@ -130,7 +130,7 @@ def algorithm(ins, b, alpha, s, mu, vis  = False, Q = None, initial = False):
 
     if initial:
         return (pred, gate, load, arrival_time) , cost
-    return pred, cost, time, best_bound, gap
+    return cost, time, best_bound, gap
 
 def prim_solution(ins, vis  = False):
 
@@ -327,12 +327,27 @@ def ESGH_solution(ins, vis  = False, initial = False, b = np.array([1,0,1,0.2,0.
 def LPDH_solution(ins,  vis  = False, initial = False, b = np.array([1,0,1,0.2,0.4,0]), alpha = 1, s = 7, mu = 1):
     return algorithm(ins,  b = b, alpha = alpha, s = s, mu = mu, vis  = vis, initial = initial)
 
+def LPDH_solution_vector(ins,  vis  = False, b = np.array([1,0,1,0.2,0.4,0]), alpha = 1, s = 7, mu = 1):
+    (pred, gate, load, arrival_time) , cost = algorithm(ins,  b = b, alpha = alpha, s = s, mu = mu, vis  = vis, initial = True)
+    n = ins.n
+    pred_array = np.ones(n, dtype = int) * -1
+    gate_array = np.zeros(n, dtype = int)
+    load_array = np.zeros(n, dtype = int)
+    arrival_array = np.zeros(n)
+    for i in range(ins.n):
+        pred_array[i] = pred[i]
+        gate_array[i] = gate[i]
+        load_array[i] = load[i]
+        arrival_array[i] = arrival_time[i]
+
+    return (pred_array,gate_array,load_array,arrival_array), cost
+    
 def main():
     name, capacity, node_data = read_instance(f"instances/c101.txt")
     ins = instance(name, capacity, node_data, 100)
     ins.capacity = 20
 
-    obj, time, best_bound, gap = random_prim_solution(ins, vis = True)
+    obj, time, best_bound, gap = LPDH_solution(ins, vis = False, initial = False)
     print(obj, time, best_bound, gap)
 
 if __name__ == "__main__":

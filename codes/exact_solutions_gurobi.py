@@ -1,6 +1,7 @@
 from tokenize import ContStr
 import gurobipy as gp
 from gurobipy import GRB
+import numpy as np
 
 from sortedcollections import SortedDict
 from utilities import instance, visualize, read_instance, visualize_relaxed
@@ -105,6 +106,21 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initia
                     arrival[j] = earliest[j]
         return (parent, gate, load, arrival), objective_value
 
+def gurobi_initial_array(ins, vis = False, time_limit = 1800, verbose = False):
+    (parent, gate, load, arrival), objective_value =gurobi_solution(ins, vis, time_limit, verbose, initial = True)
+    n = ins.n
+    pred_array = np.ones(n, dtype = int) * -1
+    gate_array = np.zeros(n, dtype = int)
+    load_array = np.zeros(n, dtype = int)
+    arrival_array = np.zeros(n)
+    for i in range(ins.n):
+        pred_array[i] = parent[i]
+        gate_array[i] = gate[i]
+        load_array[i] = load[i]
+        arrival_array[i] = arrival[i]
+
+    return (pred_array,gate_array,load_array,arrival_array), objective_value
+    
 def relaxed_gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False):
 
     nnodes = ins.n
