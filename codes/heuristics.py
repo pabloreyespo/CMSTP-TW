@@ -327,6 +327,9 @@ def ESGH_solution(ins, vis  = False, initial = False, b = np.array([1,0,1,0.2,0.
 def LPDH_solution(ins,  vis  = False, initial = False, b = np.array([1,0,1,0.2,0.4,0]), alpha = 1, s = 7, mu = 1):
     return algorithm(ins,  b = b, alpha = alpha, s = s, mu = mu, vis  = vis, initial = initial)
 
+def prim(ins,  vis  = False, initial = False):
+    return algorithm(ins,  b = np.array([1,0,0,0,0,0]), alpha = 0, s = 0, mu = 0, vis  = vis, initial = initial)
+
 def LPDH_solution_vector(ins,  vis  = False, b = np.array([1,0,1,0.2,0.4,0]), alpha = 1, s = 7, mu = 1):
     (pred, gate, load, arrival_time) , cost = algorithm(ins,  b = b, alpha = alpha, s = s, mu = mu, vis  = vis, initial = True)
     n = ins.n

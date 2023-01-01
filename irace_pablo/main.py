@@ -12,14 +12,13 @@ env.setParam("OutputFlag",0)
 env.start()
 
 def main():
-    generate_solution = lambda x: gurobi_solution(x, vis = False, time_limit= gurobi_time, verbose = False, initial=True)
-    (parent, gate, load, arrival), objective_value= generate_solution(ins)
+    gurobi_time = 30
+    initial_solution = prim(ins, vis = False, initial = True)
+    (parent, gate, load, arrival), objective_value= gurobi_solution(ins, vis = False, time_limit= gurobi_time, verbose = False, initial=True, start =initial_solution)
+    # (parent, gate, load, arrival), objective_value = prim(ins, vis = False, initial = True)
     initial_solution = lambda x: ((parent.copy(), gate.copy(), load.copy(), arrival.copy()), objective_value)
     solution_sum = 0
     for i in range(10):
-
-        print(i)
-
         pa = p1
         pb = p1 + p2
 
@@ -54,7 +53,7 @@ if __name__ == "__main__":
     try:
         opts, args = getopt.getopt(argv, 'p:Q:a:f:e:s:n:x:y:z:r:l:t:g:')
     except getopt.GetoptError:
-        print ('test.py -p path -a acceptance -f feasibility_param -e elite_param -s size_elite -z penalization -p1 prob1 -p2 prob2 -p3 prob3 -r revision_param -l local_search -t branch_time -g gurobi_time')
+        print ('test.py -p path -a acceptance -f feasibility_param -e elite_param -s size_elite -z penalization -p1 prob1 -p2 prob2 -p3 prob3 -r revision_param -l local_search -t branch_time')
         sys.exit(2)
 
     for opt, arg in opts:
@@ -87,8 +86,6 @@ if __name__ == "__main__":
             local_search_param = float(arg)
         elif opt == '-t':
             BRANCH_TIME = float(arg)
-        elif opt == '-g':
-            gurobi_time = float(arg)
 
     main()
 
