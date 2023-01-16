@@ -27,9 +27,11 @@ def test(q, a, f, e, s, n, x, y, z, r, l, t, g, nnodes, ins_folder, nombre):
         global BRANCH_TIME
         BRANCH_TIME = t
 
-        generate_solution = lambda x: gurobi_solution(x, vis = False, time_limit= g, verbose = False, initial=True)
-        (parent, gate, load, arrival), objective_value= generate_solution(ins)
+        initial_solution = prim(ins, vis = False, initial = True)
+        (parent, gate, load, arrival), objective_value= gurobi_solution(ins, vis = False, time_limit= g, verbose = False, initial=True, start =initial_solution)
+        # (parent, gate, load, arrival), objective_value = prim(ins, vis = False, initial = True)
         initial_solution = lambda x: ((parent.copy(), gate.copy(), load.copy(), arrival.copy()), objective_value)
+
         solution_sum = 0
         for i in range(10):
             pa = x

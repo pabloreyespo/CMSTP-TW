@@ -8,16 +8,14 @@ from sortedcollections import SortedDict
 from time import perf_counter
 from disjoint_set import DisjointSet
 
-from heuristics import LPDH_solution # usar LPDH solution u otra mejor
+from heuristics import LPDH_solution, prim # usar LPDH solution u otra mejor
 from exact_solutions_gurobi import gurobi_solution
 from utilities import read_instance,  visualize, instance
-
-import getopt,sys
 
 PENALIZATION = 0.5
 PERTURBATION_A = 1
 PERTURBATION_B = 0
-LOCAL_SEARCH_PARAM = 1
+LOCAL_SEARCH_PARAM = 1 # best_father
 BRANCH_TIME = 1
 
 env = gp.Env(empty=True)
@@ -146,6 +144,72 @@ def fitness(s):
                 feasible = False
                 cost += (arrival[j] - latest[j]) * PENALIZATION
     return cost, feasible
+
+def merge_branches(s):
+
+    P = s[0]
+    gate = s[1]
+    load = s[2]
+    arrival = s[3]
+
+    n = len(P)
+
+    ds = DisjointSet() 
+    for u in range(1,n): 
+        ds.find(u) 
+
+    for v in range(1,n): 
+        u = P[v]
+        if u != 0:
+            if u != -1:
+                if ds.find(u) != ds.find(v):
+                    ds.union(u,v)
+    ds = [list(i) for i in ds.itersets()]
+    nds = len(ds)
+
+    xc = xcoords - xcoords[0]
+    yc = ycoords - ycoords[0]
+
+    x_sets = np.zeros(nds)
+    y_sets = np.zeros(nds)
+
+    for i, st in enumerate(ds):
+        m = len(st)
+        if m > 1:
+            x,y = 0,0
+            for j in st:
+                x += xc[j]
+                y += yc[j]
+            x,y = x/m, y/m
+        else:
+            j = st[0]
+            x,y = xc[j], yc[j]
+        x_sets[i], y_sets[i] = x,y
+
+    r = np.sqrt(x_sets ** 2 + y_sets ** 2)
+    theta = np.arctan2(y_sets, x_sets) + (np.random.rand() * (2 * np.pi))
+    branches = list(range(nds))
+    branches = sorted(branches, key = lambda x: theta[x])
+    
+    for i in range(nds//2):
+        s1, s2 = i*2, i*2+1
+        branch = ds[s1] + ds[s2]
+        lo = len(branch)
+
+        if lo < 5 and lo >= 2:
+            bb = branch_bound(branch)
+            aux = bb.best_solution
+        else:
+            aux = branch_gurobi(branch)
+
+        for j in branch:
+            P[j] = aux[0][j]
+            gate[j] = aux[1][j]
+            load[j] = aux[2][j]
+            arrival[j] = aux[3][j]
+
+    cost, feasible = fitness((P, gate, load, arrival))
+    return (P, gate, load, arrival), cost, feasible      
 
 def optimal_branch(s):
 
@@ -608,20 +672,30 @@ def ILS_solution(ins, semilla = None, acceptance = 0.05, b = [1,0,0,0,0,0], mu =
     return cost_best, time, best_bound, gap
 
 def main():
-    name, capacity, node_data = read_instance("gehring instances/1000/C1_10_1.TXT")
-    ins = instance(name, capacity, node_data, 500)
+    name, capacity, node_data = read_instance("instances/c207.txt")
+    ins = instance(name, capacity, node_data, 100)
+
+    global xcoords, ycoords, D, latest, earliest, Q
+    xcoords, ycoords = ins.xcoords, ins.ycoords
+    D = ins.cost
+    
+    earliest, latest = ins.earliest, ins.latest
     ins.capacity = 10
-    tim = 0
+    Q = ins.capacity
+    tim = 30
 
     # generate_solution = lambda x: gurobi_solution(x, vis = False, time_limit= tim, verbose = True, initial=True)
-    # (parent, gate, load, arrival), objective_value= generate_solution(ins)
-    # initial_solution = lambda x: ((parent.copy(), gate.copy(), load.copy(), arrival.copy()), objective_value)
+    
+    initial_solution = prim(ins, vis = False, initial = True)
+    (parent, gate, load, arrival), objective_value= gurobi_solution(ins, vis = False, time_limit= 5, verbose = False, initial=True, start =initial_solution)
+    # (parent, gate, load, arrival), objective_value = prim(ins, vis = False, initial = True)
+    initial_solution = lambda x: ((parent.copy(), gate.copy(), load.copy(), arrival.copy()), objective_value)
 
     obj, time, best_bound, gap = ILS_solution_timelimit(
             ins, semilla = 0, acceptance = 0.05,
             feasibility_param = 1000, elite_param = 2500, elite_size = 20, p = 0.5,
             pa = 0.4, pb = 0.6, lsp = 0.8, initial_solution = None, #   initial_solution,
-            elite_revision_param = 1500 , vis  = True, verbose = False, time_limit = 180 - tim)
+            elite_revision_param = 1500 , vis  = True, verbose = False, time_limit = 30 )
     pass
 
 

@@ -27,8 +27,9 @@ def test(q, a, f, e, s, n, x, y, z, r, l, t, g, nnodes, ins_folder, nombre):
         global BRANCH_TIME
         BRANCH_TIME = t
 
-        generate_solution = lambda x: gurobi_solution(x, vis = False, time_limit= g, verbose = False, initial=True)
-        (parent, gate, load, arrival), objective_value= generate_solution(ins)
+        initial_solution = prim(ins, vis = False, initial = True)
+        (parent, gate, load, arrival), objective_value= gurobi_solution(ins, vis = False, time_limit= t, verbose = False, initial=True, start =initial_solution)
+        # (parent, gate, load, arrival), objective_value = prim(ins, vis = False, initial = True)
         initial_solution = lambda x: ((parent.copy(), gate.copy(), load.copy(), arrival.copy()), objective_value)
         solution_sum = 0
         for i in range(10):
@@ -54,8 +55,8 @@ def test(q, a, f, e, s, n, x, y, z, r, l, t, g, nnodes, ins_folder, nombre):
 if __name__ == "__main__":
     capacities = [10000, 20, 15, 10, 5]
     g = 30
-    a, f, e, s, n, x, y, z, r, l, t, = 0.008 ,9500 ,8000 ,50 ,6.229 ,0.125 ,0.568 ,0.307 ,5000 ,0.152 ,4
-    configuracion = "conf30-4"
+    a, f, e, s, n, x, y, z, r, l, t = 0.033 ,9500 ,10000 ,40 ,6.326 ,0.182 ,0.476 ,0.342 ,4000 ,0.18 ,4
+    configuracion = "conf30-2"
     for q in capacities:
         ins_folder = "Instances"
         test(q, a, f, e, s, n, x, y, z, r, l, t, g, 100, ins_folder, f"{configuracion} Q-{q} n-100")

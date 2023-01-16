@@ -13,7 +13,6 @@ from exact_solutions_gurobi import gurobi_initial_array
 from utilities import read_instance,  visualize_ants, instance
 from heuristics import LPDH_solution_vector
 
-
 env = gp.Env(empty=True)
 env.setParam("OutputFlag",0)
 env.start()
