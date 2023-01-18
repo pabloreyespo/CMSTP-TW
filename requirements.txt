@@ -1,7 +1,0 @@
-docplex
-gurobipy
-pandas
-matplotlib
-numpy
-sortedcollections
-disjoint_set
