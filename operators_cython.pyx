@@ -3,8 +3,11 @@ import numpy as np
 import cython
 from random import randint, sample, random
 
-cpdef  object perturbation(object s, double theta):
-    if random() <= theta:
+cpdef object perturbation(object s, double theta1, double theta2):
+    cdef double x = random()
+    if x <= theta1:
+        return all_to_root(s)
+    elif x <= theta2:
         return branch_to_root(s) 
     else:
         return branch_to_branch(s)
@@ -12,50 +15,64 @@ cpdef  object perturbation(object s, double theta):
 cdef object branch_to_root(object s):
     cdef int n = len(s.parent)
     cdef int j  = randint(1,n-1)
-    cdef list parents = [j]
     cdef list nodes = [j]
     cdef list nodes_arrival = [s.arrival[j]]
     cdef int i,k
+    cdef int lo = 1
     
-    cdef int old_gate = s.gate[j]
-    s.connect(0,j)
-
     for i in np.argsort(s.arrival, kind = "stable"):
-        if s.parent[i] in parents:
-            parents.append(i)
+        if s.parent[i] in nodes:
             nodes.append(i)
             nodes_arrival.append(s.arrival[i])
+            lo += 1
 
-    cdef int lo = len(nodes)
-    s.load[old_gate] -= lo
+    s.load[s.gate[j]] -= lo
+    s.parent[j] = 0
+    for i in np.argsort(nodes_arrival, kind = "stable"): #this should avoid using j
+        j = nodes[i]
+        k = s.parent[j]
+        s.connect(k,j)
+    return s
+
+cdef object all_to_root(object s):
+    cdef int n = len(s.parent)
+    cdef int j  = randint(1,n-1)
+    cdef list nodes = [j]
+    cdef list nodes_arrival = [s.arrival[j]]
+    cdef int i
+    cdef int lo = 1
+
+    for i in np.argsort(s.arrival, kind = "stable"):
+        if s.parent[i] in nodes:
+            nodes.append(i)
+            nodes_arrival.append(s.arrival[i])
+            lo += 1
+
+    s.load[s.gate[j]] -= lo
     
     for i in np.argsort(nodes_arrival, kind = "stable"): #this should avoid using j
-        if i != 0:
-            j = nodes[i]
-            k = s.parent[j]
-            s.connect(k,j)
+        j = nodes[i]
+        s.connect(0,j)
     return s
     
 cdef object branch_to_branch(object s):
     cdef int n = len(s.parent)
     cdef int j  = randint(1,n-1)
-    cdef list parents = [j]
     cdef list nodes = [j]
     cdef list nodes_arrival = [s.arrival[j]]
     cdef int i,k
+    cdef int lo = 1
 
     for i in np.argsort(s.arrival, kind = "stable"):
-        if s.parent[i] in parents:
-            parents.append(i)
+        if s.parent[i] in nodes:
             nodes.append(i)
             nodes_arrival.append(s.arrival[i])
-
-    cdef int lo = len(nodes)
-    s.load[s.gate[j]] -= lo
+            lo += 1
 
     for i in sample(range(1,n), n-1):
         if i not in nodes:
             if s.load[s.gate[i]] + lo <= s.capacity:
+                s.load[s.gate[j]] -= lo
                 s.parent[j] = i
                 for i in np.argsort(nodes_arrival, kind = "stable"): #this should avoid using j
                     j = nodes[i]
@@ -63,6 +80,7 @@ cdef object branch_to_branch(object s):
                     s.connect(k,j)
                 return s
     else:
+        s.load[s.gate[j]] -= lo
         s.parent[j] = 0
         for i in np.argsort(nodes_arrival, kind = "stable"): #this should avoid using j
             j = nodes[i]
@@ -74,21 +92,21 @@ cpdef object best_father(object s, int times, np.ndarray latest, double penaliza
     cdef int n = len(s.parent)
     cdef list tries = sample(range(1,n), times)
     cdef int i,j,k, lo
-    cdef list parents, nodes, nodes_arrival, con
+    cdef list nodes, nodes_arrival, con
     cdef double cost, minim
     cdef bint feasible
 
     for j in tries:
-        parents = [j]
         nodes = [j]
         nodes_arrival  = [s.arrival[j]]
+        lo = 1
 
         # discover which nodes are part of the branch
         for i in np.argsort(s.arrival, kind = "stable"):
-            if s.parent[i] in parents:
-                parents.append(i)
+            if s.parent[i] in nodes:
                 nodes.append(i)
                 nodes_arrival.append(s.arrival[i])
+                lo += 1
 
         connected =  [i for i in range(n) if i not in nodes]
 

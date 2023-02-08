@@ -18,7 +18,8 @@ env.setParam("OutputFlag",0)
 env.start()
 
 PENALIZATION = 9.378
-PERTURBATION = 0.392
+PERTURBATION1 = 0.1
+PERTURBATION2 = 0.1 + 0.9 * 0.392
 LOCAL_SEARCH_PARAM1 = 0.1 # best_father
 LOCAL_SEARCH_PARAM2 = 0.1 + 0.9 * 0.402 # best_father
 BRANCH_TIME = 2
@@ -563,12 +564,13 @@ def local_search(s):
 
 def ILS_solution(ins, semilla = None, acceptance = 0.026,
                 feasibility_param = 6000, elite_param = 5000, elite_size = 30, iterMax = 15000, p = PENALIZATION,
-                pp = PERTURBATION,  lsp1 = LOCAL_SEARCH_PARAM1, lsp2 = LOCAL_SEARCH_PARAM2,  initial_solution = None,
+                pp1 = PERTURBATION1, pp2 = PERTURBATION2,  lsp1 = LOCAL_SEARCH_PARAM1, lsp2 = LOCAL_SEARCH_PARAM2,  initial_solution = None,
                 elite_revision_param = 1000, vis  = False, verbose = False, time_limit = 60, limit_type = "t"):
     
-    global PENALIZATION, Q, PERTURBATION_A, PERTURBATION_B, LOCAL_SEARCH_PARAM, D
+    global PENALIZATION, Q, PERTURBATION1, PERTURBATION2, LOCAL_SEARCH_PARAM1, LOCAL_SEARCH_PARAM2, D
     PENALIZATION = p
-    PERTURBATION = pp
+    PERTURBATION1 = pp1
+    PERTURBATION2 = pp2
     LOCAL_SEARCH_PARAM1 = lsp1
     LOCAL_SEARCH_PARAM2 = lsp2
     
@@ -609,7 +611,7 @@ def ILS_solution(ins, semilla = None, acceptance = 0.026,
     limit = iterMax if limit_type != 't' else time_limit
 
     while get_counter() < limit:
-        s = perturbation(s, PERTURBATION)
+        s = perturbation(s, PERTURBATION1, PERTURBATION2)
         s, candidate_cost, feasible = local_search(s)
         if feasible:
             if cost_best > candidate_cost:
@@ -715,9 +717,10 @@ def test(gurobi_time, q, nnodes, ins_folder):
     else:
         a, f, e, s, n, x, y, z, r, l, t = 0.033 ,9500 ,10000 ,40 ,6.326 ,0.182 ,0.476 ,0.342 ,4000 ,0.18 ,4
 
-    global PENALIZATION ,PERTURBATION ,LOCAL_SEARCH_PARAM1 ,LOCAL_SEARCH_PARAM2 ,BRANCH_TIME ,INITIAL_TRIGGER
+    global PENALIZATION ,PERTURBATION1, PERTURBATION1 ,LOCAL_SEARCH_PARAM1 ,LOCAL_SEARCH_PARAM2 ,BRANCH_TIME ,INITIAL_TRIGGER
     PENALIZATION = n
-    PERTURBATION = y
+    PERTURBATION1  = 0.1 
+    PERTURBATION2 = 0.1 + 0.9 * y
     LOCAL_SEARCH_PARAM1, LOCAL_SEARCH_PARAM2 = 0.1, 0.1 + 0.9 * l
     BRANCH_TIME = t
     INITIAL_TRIGGER = 40
@@ -761,6 +764,8 @@ def test(gurobi_time, q, nnodes, ins_folder):
     df.to_excel(f"{nombre}.xlsx", index= False)
 
 if __name__ == "__main__":
+    main()
+    exit(1)
     capacities = [10000, 20, 15, 10, 5]
     gurobi_time = 30
     nnodes = 100

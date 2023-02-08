@@ -1,10 +1,4 @@
-# from exact_solutions_cplex import *
-from exact_solutions_gurobi import *
-# from metaheuristic_cplex import *
-from metaheuristic_gurobi import *
-from heuristics import *
-from utilities import *
-
+from matheuristic_cython import *
 import getopt,sys
 
 env = gp.Env(empty=True)
@@ -13,19 +7,32 @@ env.start()
 
 def main():
     gurobi_time = 30
-    initial_solution = prim(ins, vis = False, initial = True)
-    (parent, gate, load, arrival), objective_value= gurobi_solution(ins, vis = False, time_limit= gurobi_time, verbose = False, initial=True, start =initial_solution)
-    # (parent, gate, load, arrival), objective_value = prim(ins, vis = False, initial = True)
-    initial_solution = lambda x: ((parent.copy(), gate.copy(), load.copy(), arrival.copy()), objective_value)
-    solution_sum = 0
-    for i in range(10):
-        pa = p1
-        pb = p1 + p2
 
-        obj, time, best_bound, gap = ILS_solution_timelimit(
+    global xcoords, ycoords, latest, earliest, D, Q
+    xcoords, ycoords = ins.xcoords, ins.ycoords
+    earliest, latest = ins.earliest, ins.latest
+    D = ins.cost
+    Q = ins.capacity
+    
+    s, cost = prim(ins, vis = False, initial = True)
+    print("prim:", cost)
+    s, cost = gurobi_solution(ins, vis = False, time_limit= 30, verbose = False, initial=True, start = s)
+    print("gurobi:", cost)
+    initial_solution = lambda x: (deepcopy(s), cost)
+    solution_sum = 0
+
+    pp1 = p1
+    pp2 = p1 + p2
+    lsp1 = l1
+    lsp2 = l1 + l2
+
+    for i in range(10):
+
+
+        obj, time, best_bound, gap = ILS_solution(
             ins, semilla = i, acceptance = acceptance,
             feasibility_param = feasibility_param, elite_param = elite_param, elite_size = size_elite, p = penalization,
-            pa = pa, pb = pb, lsp = local_search_param, initial_solution = initial_solution,
+            pp1 = pp1, pp2 = pp2, lsp1 = lsp1, lsp2= lsp2, initial_solution = initial_solution,
             elite_revision_param = revision_param, vis  = False, verbose = False, time_limit = 60 - gurobi_time)
         solution_sum += obj
 
@@ -51,9 +58,9 @@ if __name__ == "__main__":
     # gurobi_time = 30 # '-g'
 
     try:
-        opts, args = getopt.getopt(argv, 'p:Q:a:f:e:s:n:x:y:z:r:l:t:g:')
+        opts, args = getopt.getopt(argv, 'p:Q:a:f:e:s:n:x:y:z:r:l:t:')
     except getopt.GetoptError:
-        print ('test.py -p path -a acceptance -f feasibility_param -e elite_param -s size_elite -z penalization -p1 prob1 -p2 prob2 -p3 prob3 -r revision_param -l local_search -t branch_time')
+        print ('test.py -p path -a acceptance -f feasibility_param -e elite_param -s size_elite -n penalization -x pert1 -y pert2 -z pert3 -r revision_param -u local1 -v local2 -w local3 -t branch_time')
         sys.exit(2)
 
     for opt, arg in opts:
@@ -82,11 +89,14 @@ if __name__ == "__main__":
             p3 = float(arg)
         elif opt == '-r':
             revision_param = int(round(float(arg)))
-        elif opt == '-l':
-            local_search_param = float(arg)
+        elif opt == '-u':
+            l1 = float(arg)
+        elif opt == '-v':
+            l2 = float(arg)
+        elif opt == '-2':
+            l3 = float(arg)
         elif opt == '-t':
             BRANCH_TIME = float(arg)
-
     main()
 
 # python codes/main.py -p Instances/r101.txt -Q 10 -a 0.05 -f 1000 -e 2500 -s 20 -n 0.5 -x 0.4 -y 0.2 -z 0.4 -r 1500 -l 0.8 -t 1 -g 30

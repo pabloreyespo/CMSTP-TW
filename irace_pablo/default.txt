@@ -11,5 +11,5 @@
 ## parameter conditions (NA should be used for those parameters that
 ## are not enabled for a given configuration) and, if given, the
 ## constraints that describe forbidden configurations.
-acceptance feasibility_param elite_param size_elite penalization prob1 prob2 prob3 revision_param local_search time_branch
+acceptance feasibility_param elite_param size_elite penalization pert1 pert2 pert3 revision_param local1 local2 local3 time_branch
 0.05 1000 2500 20 0.5 0.4 0.2 0.4 1500 0.8 1
