@@ -19,8 +19,7 @@ env.start()
 
 PENALIZATION = 9.378
 PERTURBATION1 = 0.1
-PERTURBATION2 = 0.1 + 0.7 * 0.392
-PERTURBATION3 = PERTURBATION2 + 0.7 * (1 - 0.392)    
+PERTURBATION2 = 0.1 + 0.9 * 0.392
 LOCAL_SEARCH_PARAM1 = 0.1 # best_father
 LOCAL_SEARCH_PARAM2 = 0.1 + 0.9 * 0.402 # best_father
 BRANCH_TIME = 2
@@ -190,8 +189,7 @@ def visualize(xcoords, ycoords, s):
 
     # edges activated
     for j,k in  enumerate(s.parent): 
-        if j != 0:
-            ax.plot([xcoords[k],xcoords[j]],[ycoords[k],ycoords[j]], color = 'black',linestyle = ':',zorder=1)
+        ax.plot([xcoords[k],xcoords[j]],[ycoords[k],ycoords[j]], color = 'black',linestyle = ':',zorder=1)
 
     # node label
     for i in range(len(xcoords)): 
@@ -220,9 +218,9 @@ def prim(ins, vis  = False, initial = False):
     itree.add(v)
     nodes_left.remove(0)
     nodes_left.remove(v)
-    
+
     s.connect(0,v)
-    cost = distance(0,v)
+    cost = s.arrival[v]
 
     while len(nodes_left) > 0:
         min_tree = inf
@@ -341,10 +339,6 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initia
             if j != 0:
                 k = s.parent[j]
                 s.connect(k,j)
-
-        if vis:
-            visualize(ins.xcoords, ins.ycoords, s)
-
         return s, objective_value
 
 class branch_bound:
@@ -570,14 +564,13 @@ def local_search(s):
 
 def ILS_solution(ins, semilla = None, acceptance = 0.026,
                 feasibility_param = 6000, elite_param = 5000, elite_size = 30, iterMax = 15000, p = PENALIZATION,
-                pp1 = PERTURBATION1, pp2 = PERTURBATION2, pp3 = PERTURBATION3,  lsp1 = LOCAL_SEARCH_PARAM1, lsp2 = LOCAL_SEARCH_PARAM2,  initial_solution = None,
+                pp1 = PERTURBATION1, pp2 = PERTURBATION2,  lsp1 = LOCAL_SEARCH_PARAM1, lsp2 = LOCAL_SEARCH_PARAM2,  initial_solution = None,
                 elite_revision_param = 1000, vis  = False, verbose = False, time_limit = 60, limit_type = "t"):
     
-    global PENALIZATION, Q, PERTURBATION1, PERTURBATION2,PERTURBATION3, LOCAL_SEARCH_PARAM1, LOCAL_SEARCH_PARAM2, D
+    global PENALIZATION, Q, PERTURBATION1, PERTURBATION2, LOCAL_SEARCH_PARAM1, LOCAL_SEARCH_PARAM2, D
     PENALIZATION = p
     PERTURBATION1 = pp1
     PERTURBATION2 = pp2
-    PERTURBATION3 = pp3
     LOCAL_SEARCH_PARAM1 = lsp1
     LOCAL_SEARCH_PARAM2 = lsp2
     
@@ -618,8 +611,7 @@ def ILS_solution(ins, semilla = None, acceptance = 0.026,
     limit = iterMax if limit_type != 't' else time_limit
 
     while get_counter() < limit:
-
-        s = perturbation(s, PERTURBATION1, PERTURBATION2, PERTURBATION3)
+        s = perturbation(s, PERTURBATION1, PERTURBATION2)
         s, candidate_cost, feasible = local_search(s)
         if feasible:
             if cost_best > candidate_cost:
@@ -637,8 +629,8 @@ def ILS_solution(ins, semilla = None, acceptance = 0.026,
         if verbose: print(it, candidate_cost)
         else:
             count = get_counter()
-            text = f'{count:^10.2f}/{limit} [{"#"*int(count*50//limit):<50}] cost: {candidate_cost:^10.3f} best: {cost_best:^10.3f} it: {it+1}'
-            print(text, end = "\r")
+            # text = f'{count:^10.2f}/{limit} [{"#"*int(count*50//limit):<50}] cost: {candidate_cost:^10.3f} best: {cost_best:^10.3f} it: {it+1}'
+            # print(text, end = "\r")
             pass
         
         #if feasible: feasible_count += 1
@@ -650,17 +642,12 @@ def ILS_solution(ins, semilla = None, acceptance = 0.026,
         # feasibility_list.append(feasible)
 
         if candidate_cost > cost_best * (1 + acceptance) or not feasible:
-            s = deepcopy(s_best)
+            x = choice(elite.values())[0]
+            s = deepcopy(x)
         
         if (it + 1) % feasibility_param == 0:
             if s_best_unfeasible is not None:
                 s = deepcopy(s_best_unfeasible)
-
-
-        if (it + 1) % elite_param == 0:
-            x = choice(elite.values())
-            x = x[0]
-            s = deepcopy(x)
 
         if (it + 1) % elite_revision_param == 0:
             for cost in elite:
@@ -694,8 +681,9 @@ def ILS_solution(ins, semilla = None, acceptance = 0.026,
     return cost_best, time, best_bound, gap
 
 def main():
-    name, capacity, node_data = read_instance("instances/r102.txt")
+    name, capacity, node_data = read_instance("instances/rc102.txt")
     ins = instance(name, capacity, node_data, 100)
+    ins.capacity = 15
 
     global xcoords, ycoords, latest, earliest, D, Q
     xcoords, ycoords = ins.xcoords, ins.ycoords
@@ -709,9 +697,10 @@ def main():
     print("gurobi:", cost)
     initial_solution = lambda x: (deepcopy(s), cost)
 
+
     obj, time, best_bound, gap = ILS_solution(
             ins, semilla = 42, initial_solution = initial_solution, #   initial_solution,
-            vis  = True, verbose = False, time_limit = 30 )
+            vis  = False, verbose = False, time_limit = 30 )
         
     print("ILS:", obj)
 
@@ -723,11 +712,10 @@ def test(gurobi_time, q, nnodes, ins_folder):
     else:
         a, f, e, s, n, x, y, z, r, l, t = 0.033 ,9500 ,10000 ,40 ,6.326 ,0.182 ,0.476 ,0.342 ,4000 ,0.18 ,4
 
-    global PENALIZATION ,PERTURBATION1, PERTURBATION2,PERTURBATION3 ,LOCAL_SEARCH_PARAM1 ,LOCAL_SEARCH_PARAM2 ,BRANCH_TIME ,INITIAL_TRIGGER
+    global PENALIZATION ,PERTURBATION1, PERTURBATION1 ,LOCAL_SEARCH_PARAM1 ,LOCAL_SEARCH_PARAM2 ,BRANCH_TIME ,INITIAL_TRIGGER
     PENALIZATION = n
-    PERTURBATION1  = 0.1
-    PERTURBATION2 = 0.1 + 0.7 * y
-    PERTURBATION3 = PERTURBATION2 + 0.7 * (1 - y)        
+    PERTURBATION1  = 0.1 
+    PERTURBATION2 = 0.1 + 0.9 * y
     LOCAL_SEARCH_PARAM1, LOCAL_SEARCH_PARAM2 = 0.1, 0.1 + 0.9 * l
     BRANCH_TIME = t
     INITIAL_TRIGGER = 40
@@ -771,6 +759,7 @@ def test(gurobi_time, q, nnodes, ins_folder):
     df.to_excel(f"{nombre}.xlsx", index= False)
 
 if __name__ == "__main__":
+    main()
     capacities = [10000, 20, 15, 10, 5]
     gurobi_time = 30
     nnodes = 100

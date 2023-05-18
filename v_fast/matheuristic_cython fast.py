@@ -19,8 +19,7 @@ env.start()
 
 PENALIZATION = 9.378
 PERTURBATION1 = 0.1
-PERTURBATION2 = 0.1 + 0.7 * 0.392
-PERTURBATION3 = PERTURBATION2 + 0.7 * (1 - 0.392)    
+PERTURBATION2 = 0.1 + 0.9 * 0.392
 LOCAL_SEARCH_PARAM1 = 0.1 # best_father
 LOCAL_SEARCH_PARAM2 = 0.1 + 0.9 * 0.402 # best_father
 BRANCH_TIME = 2
@@ -43,9 +42,6 @@ class tree:
             self.gate[j] = gate = self.gate[k]
         self.load[gate] += 1
         self.parent[j] = k
-        self.arrival[j] = self.arrival[k] + distance(k,j)
-        if not self.arrival[j] >= earliest[j]:
-            self.arrival[j] = earliest[j]
             
     def fitness(self):
         cost = 0 
@@ -58,8 +54,8 @@ class tree:
                 if  arr > lat:
                     feasible = False
                     cost += (arr - lat) * PENALIZATION
+            return cost, feasible
 
-        return cost, feasible
     
     def __repr__(self):
         
@@ -222,7 +218,9 @@ def prim(ins, vis  = False, initial = False):
     nodes_left.remove(v)
     
     s.connect(0,v)
-    cost = distance(0,v)
+    s.arrival[v] = cost = distance(0,v)
+    if not s.arrival[v] >= earliest[v]:
+        s.arrival[v] = earliest[v]
 
     while len(nodes_left) > 0:
         min_tree = inf
@@ -256,6 +254,9 @@ def prim(ins, vis  = False, initial = False):
         itree.add(jj)
         nodes_left.remove(jj)
         s.connect(kk,jj)
+        s.arrival[jj] = s.arrival[kk] + distance(kk,jj)
+        if not s.arrival[jj] >= earliest[jj]:
+            s.arrival[jj] = earliest[jj]
         cost += distance(kk,jj)
 
     time = perf_counter() - start
@@ -341,6 +342,9 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initia
             if j != 0:
                 k = s.parent[j]
                 s.connect(k,j)
+                s.arrival[j] = s.arrival[k] + distance(k,j)
+                if not s.arrival[j] >= earliest[j]:
+                    s.arrival[j] = earliest[j]
 
         if vis:
             visualize(ins.xcoords, ins.ycoords, s)
@@ -530,9 +534,7 @@ def merge_branches(s):
             s.gate[j] = aux[1][j]
             s.load[j] = aux[2][j]
             s.arrival[j] = aux[3][j]
-
-    cost, feasible = fitness(s, latest, PENALIZATION)
-    return s, cost, feasible     
+    return s
 
 def optimal_branch(s):
 
@@ -552,32 +554,32 @@ def optimal_branch(s):
                     s.gate[j] = aux[1][j]
                     s.load[j] = aux[2][j]
                     s.arrival[j] = aux[3][j]
-
-    cost, feasible = fitness(s, latest, PENALIZATION)
-    return s, cost, feasible         
+    cost, feasible = fitness(s, earliest, latest, PENALIZATION)
+    return s, cost, feasible
 
 def local_search(s):
     x = random()
     if x < LOCAL_SEARCH_PARAM1:
         # print("LA")
-        return merge_branches(s)
+        s =  merge_branches(s)
     elif x < LOCAL_SEARCH_PARAM2:
         # print("LB")
-        return best_father(s,1, latest, PENALIZATION)
+        s =  best_father(s,1, latest, PENALIZATION)
     else:
         # print("LC")
-        return best_father(s,5, latest, PENALIZATION)
+        s =  best_father(s,5, latest, PENALIZATION)
+    cost, feasible = fitness(s, earliest, latest, PENALIZATION)
+    return s, cost, feasible
 
 def ILS_solution(ins, semilla = None, acceptance = 0.026,
                 feasibility_param = 6000, elite_param = 5000, elite_size = 30, iterMax = 15000, p = PENALIZATION,
-                pp1 = PERTURBATION1, pp2 = PERTURBATION2, pp3 = PERTURBATION3,  lsp1 = LOCAL_SEARCH_PARAM1, lsp2 = LOCAL_SEARCH_PARAM2,  initial_solution = None,
+                pp1 = PERTURBATION1, pp2 = PERTURBATION2,  lsp1 = LOCAL_SEARCH_PARAM1, lsp2 = LOCAL_SEARCH_PARAM2,  initial_solution = None,
                 elite_revision_param = 1000, vis  = False, verbose = False, time_limit = 60, limit_type = "t"):
     
-    global PENALIZATION, Q, PERTURBATION1, PERTURBATION2,PERTURBATION3, LOCAL_SEARCH_PARAM1, LOCAL_SEARCH_PARAM2, D
+    global PENALIZATION, Q, PERTURBATION1, PERTURBATION2, LOCAL_SEARCH_PARAM1, LOCAL_SEARCH_PARAM2, D
     PENALIZATION = p
     PERTURBATION1 = pp1
     PERTURBATION2 = pp2
-    PERTURBATION3 = pp3
     LOCAL_SEARCH_PARAM1 = lsp1
     LOCAL_SEARCH_PARAM2 = lsp2
     
@@ -618,8 +620,7 @@ def ILS_solution(ins, semilla = None, acceptance = 0.026,
     limit = iterMax if limit_type != 't' else time_limit
 
     while get_counter() < limit:
-
-        s = perturbation(s, PERTURBATION1, PERTURBATION2, PERTURBATION3)
+        s = perturbation(s, PERTURBATION1, PERTURBATION2)
         s, candidate_cost, feasible = local_search(s)
         if feasible:
             if cost_best > candidate_cost:
@@ -703,11 +704,12 @@ def main():
     D = ins.cost
     Q = ins.capacity
     
-    s, cost = prim(ins, vis = False, initial = True)
-    print("prim:", cost)
-    s, cost = gurobi_solution(ins, vis = False, time_limit= 30, verbose = False, initial=True, start = s)
-    print("gurobi:", cost)
+    s, cost = prim(ins, vis = True, initial = True)
+    print(f"prim: {cost}")
+    s, cost = gurobi_solution(ins, vis = True, time_limit= 30, verbose = False, initial=True, start = s)
+    print(f"gurobi: {cost}")
     initial_solution = lambda x: (deepcopy(s), cost)
+
 
     obj, time, best_bound, gap = ILS_solution(
             ins, semilla = 42, initial_solution = initial_solution, #   initial_solution,
@@ -723,11 +725,10 @@ def test(gurobi_time, q, nnodes, ins_folder):
     else:
         a, f, e, s, n, x, y, z, r, l, t = 0.033 ,9500 ,10000 ,40 ,6.326 ,0.182 ,0.476 ,0.342 ,4000 ,0.18 ,4
 
-    global PENALIZATION ,PERTURBATION1, PERTURBATION2,PERTURBATION3 ,LOCAL_SEARCH_PARAM1 ,LOCAL_SEARCH_PARAM2 ,BRANCH_TIME ,INITIAL_TRIGGER
+    global PENALIZATION ,PERTURBATION1, PERTURBATION1 ,LOCAL_SEARCH_PARAM1 ,LOCAL_SEARCH_PARAM2 ,BRANCH_TIME ,INITIAL_TRIGGER
     PENALIZATION = n
-    PERTURBATION1  = 0.1
-    PERTURBATION2 = 0.1 + 0.7 * y
-    PERTURBATION3 = PERTURBATION2 + 0.7 * (1 - y)        
+    PERTURBATION1  = 0.1 
+    PERTURBATION2 = 0.1 + 0.9 * y
     LOCAL_SEARCH_PARAM1, LOCAL_SEARCH_PARAM2 = 0.1, 0.1 + 0.9 * l
     BRANCH_TIME = t
     INITIAL_TRIGGER = 40
@@ -746,7 +747,7 @@ def test(gurobi_time, q, nnodes, ins_folder):
         initialize(ins)
 
         initial_solution, cost = prim(ins, vis = False, initial = True)
-        print("prim:", cost)
+
         generate_solution = lambda x: gurobi_solution(x, vis = False, time_limit= gurobi_time, verbose = False, initial=True, start = initial_solution)
         sol, objective_value = generate_solution(ins)
         print("gurobi:", objective_value)
@@ -771,12 +772,13 @@ def test(gurobi_time, q, nnodes, ins_folder):
     df.to_excel(f"{nombre}.xlsx", index= False)
 
 if __name__ == "__main__":
-    capacities = [10000, 20, 15, 10, 5]
-    gurobi_time = 30
-    nnodes = 100
-    for q in capacities:
-        ins_folder = "Instances"
-        test(gurobi_time, q, nnodes, ins_folder)
+    main()
+    # capacities = [10000, 20, 15, 10, 5]
+    # gurobi_time = 30
+    # nnodes = 100
+    # for q in capacities:
+    #     ins_folder = "Instances"
+    #     test(gurobi_time, q, nnodes, ins_folder)
 
     # import getopt,sys
     # argv = sys.argv[1:]
