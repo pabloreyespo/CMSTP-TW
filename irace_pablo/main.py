@@ -6,9 +6,8 @@ env.setParam("OutputFlag",0)
 env.start()
 
 def main():
-    gurobi_time = 30
+    global ins, xcoords, ycoords, latest, earliest, D, Q
 
-    global xcoords, ycoords, latest, earliest, D, Q
     xcoords, ycoords = ins.xcoords, ins.ycoords
     earliest, latest = ins.earliest, ins.latest
     D = ins.cost
@@ -16,23 +15,22 @@ def main():
     
     s, cost = prim(ins, vis = False, initial = True)
     print("prim:", cost)
-    s, cost = gurobi_solution(ins, vis = False, time_limit= 30, verbose = False, initial=True, start = s)
+    s, cost = gurobi_solution(ins, vis = False, time_limit= gurobi_time, verbose = False, initial=True, start = s)
     print("gurobi:", cost)
     initial_solution = lambda x: (deepcopy(s), cost)
     solution_sum = 0
 
     pp1 = p1
     pp2 = p1 + p2
+    pp3 = p1 + p2 + p3
     lsp1 = l1
     lsp2 = l1 + l2
 
     for i in range(10):
-
-
         obj, time, best_bound, gap = ILS_solution(
             ins, semilla = i, acceptance = acceptance,
             feasibility_param = feasibility_param, elite_param = elite_param, elite_size = size_elite, p = penalization,
-            pp1 = pp1, pp2 = pp2, lsp1 = lsp1, lsp2= lsp2, initial_solution = initial_solution,
+            pp1 = pp1, pp2 = pp2, pp3 = pp3, lsp1 = lsp1, lsp2= lsp2, initial_solution = initial_solution,
             elite_revision_param = revision_param, vis  = False, verbose = False, time_limit = 60 - gurobi_time)
         solution_sum += obj
 
@@ -52,25 +50,26 @@ if __name__ == "__main__":
     # p1 = 0.4 # '-p1'
     # p2 = 0.2 # '-p2'
     # p3 = 0.4 # '-p3'
+    # p4 =  # '-p4
     # revision_param = 1500 # '-r'
     # local_search_param = 0.8 # '-l'
     # BRANCH_TIME = 1 # '-t'
     # gurobi_time = 30 # '-g'
 
     try:
-        opts, args = getopt.getopt(argv, 'p:Q:a:f:e:s:n:x:y:z:r:l:t:')
+        opts, args = getopt.getopt(argv, 'p:Q:N:a:f:e:s:n:x:y:z:c:r:u:v:w:t:')
     except getopt.GetoptError:
-        print ('test.py -p path -a acceptance -f feasibility_param -e elite_param -s size_elite -n penalization -x pert1 -y pert2 -z pert3 -r revision_param -u local1 -v local2 -w local3 -t branch_time')
+        print ('test.py -p path -Q capacity -N n_nodes -a acceptance -f feasibility_param -e elite_param -s size_elite -n penalization -x pert1 -y pert2 -z pert3 -c pert4 -r revision_param -u local1 -v local2 -w local3 -t branch_time')
         sys.exit(2)
 
     for opt, arg in opts:
         if opt == '-p':
             print(arg)
             name, capacity, node_data = read_instance(arg)
-            ins = instance(name, capacity, node_data, 100)
         elif opt == '-Q':
-            Q = int(arg)
-            ins.capacity = Q
+            Q = int(arg)  
+        elif opt == '-N':
+            problem_size = int(arg)
         elif opt == '-a':
             acceptance = float(arg)
         elif opt == '-f':
@@ -87,16 +86,22 @@ if __name__ == "__main__":
             p2 = float(arg)
         elif opt == '-z':
             p3 = float(arg)
+        elif opt == '-c':
+            p4 = float(arg)
         elif opt == '-r':
             revision_param = int(round(float(arg)))
         elif opt == '-u':
             l1 = float(arg)
         elif opt == '-v':
             l2 = float(arg)
-        elif opt == '-2':
+        elif opt == '-w':
             l3 = float(arg)
         elif opt == '-t':
             BRANCH_TIME = float(arg)
+
+    ins = instance(name, capacity, node_data, problem_size)
+    gurobi_time = 30
+    ins.capacity = Q
     main()
 
-# python codes/main.py -p Instances/r101.txt -Q 10 -a 0.05 -f 1000 -e 2500 -s 20 -n 0.5 -x 0.4 -y 0.2 -z 0.4 -r 1500 -l 0.8 -t 1 -g 30
+# python codes/main.py -p Instances/r101.txt -Q 10 -N 100 -a 0.05 -f 1000 -e 2500 -s 20 -n 0.5 -x 0.4 -y 0.2 -z 0.2 -c 0.2 -r 1500 -u 0.3 -v 0.3 -w 0.4 -t 1

@@ -42,7 +42,7 @@ digits = 3
 
 repairConfiguration = function (configuration, parameters, digits)
 {
-columns1 <- c("prob1","prob2","prob3")
+columns1 <- c("prob1","prob2","prob3","prob4")
 columns2 <- c("local_search1","local_search2","local_search3")
 configuration[columns1]<-round(configuration[columns1] / sum(configuration[columns1]), 3)
 configuration[columns2]<-round(configuration[columns2] / sum(configuration[columns2]), 3)

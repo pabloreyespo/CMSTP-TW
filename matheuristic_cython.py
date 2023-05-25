@@ -546,7 +546,6 @@ def optimal_branch(s):
                     aux = bb.give_solution()
                 else:
                     aux = branch_gurobi(branch, s.parent)
-
                 for j in branch:
                     s.parent[j] = aux[0][j]
                     s.gate[j] = aux[1][j]
@@ -572,7 +571,6 @@ def ILS_solution(ins, semilla = None, acceptance = 0.026,
                 feasibility_param = 6000, elite_param = 5000, elite_size = 30, iterMax = 15000, p = PENALIZATION,
                 pp1 = PERTURBATION1, pp2 = PERTURBATION2, pp3 = PERTURBATION3,  lsp1 = LOCAL_SEARCH_PARAM1, lsp2 = LOCAL_SEARCH_PARAM2,  initial_solution = None,
                 elite_revision_param = 1000, vis  = False, verbose = False, time_limit = 60, limit_type = "t"):
-    
     global PENALIZATION, Q, PERTURBATION1, PERTURBATION2,PERTURBATION3, LOCAL_SEARCH_PARAM1, LOCAL_SEARCH_PARAM2, D
     PENALIZATION = p
     PERTURBATION1 = pp1
@@ -598,15 +596,6 @@ def ILS_solution(ins, semilla = None, acceptance = 0.026,
 
     s_best = deepcopy(s)
     s_best_unfeasible = None
-
-    # feasible_count = 1
-    # unfeasible_count = 0
-    # mejoras = 0
-
-    # costs_list = [cost_best]
-    # bestCosts_list = [cost_best]
-    # solutions_list = [s_best]
-    # feasibility_list = [feasible]
 
     elite = SortedDict()
     elite[cost_best] = [deepcopy(s),False]
@@ -640,14 +629,6 @@ def ILS_solution(ins, semilla = None, acceptance = 0.026,
             text = f'{count:^10.2f}/{limit} [{"#"*int(count*50//limit):<50}] cost: {candidate_cost:^10.3f} best: {cost_best:^10.3f} it: {it+1}'
             print(text, end = "\r")
             pass
-        
-        #if feasible: feasible_count += 1
-        #else: unfeasible_count += 1
-
-        # costs_list.append(candidate_cost)
-        # bestCosts_list.append(cost_best)
-        # solutions_list.append(s)
-        # feasibility_list.append(feasible)
 
         if candidate_cost > cost_best * (1 + acceptance) or not feasible:
             s = deepcopy(s_best)
