@@ -343,7 +343,7 @@ def gurobi_fast_solution(ins, time_limit = 1800, start = None, rando = False):
     # mdl = gp.read("MILP.lp")
     mdl = ins.mdl.copy()
     v = mdl.getVars()
-    print(v[0:250])
+    # print(v[0:250])
 
     for j in ins.nodes[1:]:
         if start:
@@ -657,7 +657,7 @@ def ILS_solution(ins, semilla = None, iterMax = 15000,  initial_solution = None,
 
         if verbose: 
             count = get_counter()
-            text = f'{count:^10.2f}/{limit} [{"#"*int(count*50//limit):<50}] cost: {candidate_cost:^10.3f} best: {cost_best:^10.3f} it: {it+1}'
+            text = f'{count:^10.3f}/{limit:10.3f} [{"#"*int(count*50//limit):<50}] cost: {candidate_cost:^10.3f} best: {cost_best:^10.3f} it: {it+1}'
             print(text, end = "\r")
             pass
 
@@ -699,7 +699,7 @@ def ILS_solution(ins, semilla = None, iterMax = 15000,  initial_solution = None,
     
     time = perf_counter() - start_time
     count = get_counter()
-    text = f'{count:^10.2f}/{limit} [{"#"*int(count*50//limit):<50}] cost: {candidate_cost:^10.3f} best: {cost_best:^10.3f} best_it: {best_it}/{it}'
+    text = f'{count:^10.3f}/{limit:10.3f} [{"#"*int(count*50//limit):<50}] cost: {candidate_cost:^10.3f} best: {cost_best:^10.3f} best_it: {best_it}/{it}'
     print(text)
 
     if vis: visualize(ins.xcoords, ins.ycoords, s_best)
@@ -864,7 +864,7 @@ if __name__ == "__main__":
     capacities = [1000,20,15,10,5]
 
     global_time = 60
-    nnodes = 200
+    nnodes = 150
     for q in capacities:
         ins_folder = "gehring instances/200"
         gurobi_prop = 20
