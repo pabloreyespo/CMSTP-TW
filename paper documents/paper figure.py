@@ -2,7 +2,6 @@ from copy import deepcopy
 import gurobipy as gp
 from gurobipy import GRB
 import matplotlib.pyplot as plt
-from operators_cython import perturbation, best_father, fitness
 
 import numpy as np
 import pandas as pd
@@ -162,7 +161,7 @@ def visualize(xcoords, ycoords, s):
 
     # node label
     for i in range(len(xcoords)): 
-        plt.annotate(str(i) ,xy = (xcoords[i],ycoords[i]), xytext = (xcoords[i]-0.6,ycoords[i]-0.6), color = 'black', zorder=4)
+        plt.annotate(str(i) ,xy = (xcoords[i],ycoords[i]), xytext = (xcoords[i]-0.04,ycoords[i]-0.05), color = 'black', zorder=4)
     plt.show()
 
 def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initial = False, start = None):
@@ -186,7 +185,7 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initia
     d = mdl.addVars(nodes, vtype = GRB.CONTINUOUS, name = "d", lb = 0)
 
     mdl.setObjective(x.prod(cost))
-    par = [-1,3,6,0,12,6,0,0,7,3,11,7,0]
+    # par = [-1,3,6,0,12,6,0,0,7,3,11,7,0]
     R1 = mdl.addConstrs((gp.quicksum(x[(i,j)] for i in nodes if i!=j) == 1 for j in nodesv),name = "R1")
     R2 = mdl.addConstrs((gp.quicksum(y[(i,j)] for i in nodes if i!=j) - gp.quicksum(y[(j,i)] for i in nodesv if i!=j) == demands[j] for j in nodesv), name = "R2") 
     R3 = mdl.addConstrs((x[(i,j)] <= y[(i,j)] for i,j in edges),name = "R3") 
@@ -194,8 +193,7 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initia
     R5 = mdl.addConstrs((d[i] + cost[(i,j)] - d[j] <= M * (1 - x[(i,j)]) for i,j in edges), name = "R5") 
     R6 = mdl.addConstrs((d[i] >= earliest[i] for i in nodes), name = "R6") 
     R7 = mdl.addConstrs((d[i] <= latest[i] for i in nodes), name = "R7")
-    R8 = mdl.addConstrs((x[(par[j],j)] == 1 for j in nodesv), name = "R8")
-
+    # R8 = mdl.addConstrs((x[(par[j],j)] == 1 for j in nodesv), name = "R8")
 
     mdl.Params.TimeLimit = time_limit
     mdl.Params.Threads = 1
@@ -238,16 +236,43 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initia
     
 def main():
     name, capacity, node_data = read_instance("instances/r102.txt")
-    ins = instance(name, capacity, node_data, 12)
-    ins.capacity = 6
+    ins = instance(name, capacity, node_data, 8)
+    ins.name = "Prueba Paper"
+    # np.random.seed(12)
+    np.random.seed(0)
+    # ins.xcoords = np.random.randint(0,5,8)
+    # ins.ycoords = np.random.randint(0,5,8)  
+    ins.xcoords = np.array([0,0.5,1,1,4,2,2.5,4,1.5])
+    ins.ycoords = np.array([3,1.5,2,4,2,1,2.0,4,2.5])
+    #ins.xcoords[4], ins.xcoords[0] = ins.xcoords[0], ins.xcoords[4]
+    #ins.ycoords[4], ins.ycoords[0] = ins.ycoords[0], ins.ycoords[4]
+    ins.earliest = np.random.randint(0,10,9) * 10
+    ins.latest = ins.earliest + np.random.randint(0,20,9) * 10
+    ins.earliest[0] = 0
+    ins.latest[0] = 1000
+    # cost = time = distance for simplicity
+    global D
+    D = np.zeros((ins.n,ins.n))
+    for i in range(ins.n):
+        for j in range(i+1,ins.n):
+            if i != j:
+                D[i,j] = D[j,i]= ins.dist(i,j)
+    ins.cost = D
+    ins.capacity = 4
 
-    global xcoords, ycoords, latest, earliest, D, Q
+    global xcoords, ycoords, latest, earliest, Q
     xcoords, ycoords = ins.xcoords, ins.ycoords
     earliest, latest = ins.earliest, ins.latest
     D = ins.cost
     Q = ins.capacity
     
-    s, cost = gurobi_solution(ins, vis = True, time_limit= 30, verbose = False, initial=True)
+    print(ins.xcoords, ins.ycoords)
+    print(ins.nodes)
+    print(ins.n)
+    print(ins.earliest)
+    print(ins.latest)
+    print(ins.cost)
+    s, cost = gurobi_solution(ins, vis = True, time_limit= 30, verbose = True, initial=True)
     print("gurobi:", cost)
     print(s.parent)
     print(s.gate)
