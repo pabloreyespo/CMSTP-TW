@@ -865,7 +865,7 @@ if __name__ == "__main__":
     # e_size = 20
     # BRANCH_TIME = 5
     # INITIAL_TRIGGER = 40
-    capacities = [1000,20,15,10, 5]
+    capacities = [1000,20,15,10,5]
 
     global_time = 60
     nnodes = 150
