@@ -313,8 +313,8 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initia
     
 def write_model(ins):
     n = ins.n
-    earliest = ins.earliest.reshape(n,1)
-    latest = ins.latest.reshape(n,1)
+    e = ins.earliest.reshape(n,1)
+    l = ins.latest.reshape(n,1)
 
     M = latest.max() + D.max()
     mdl = gp.Model(ins.name, env = env)
@@ -323,8 +323,8 @@ def write_model(ins):
     y = mdl.addMVar(shape = (n,n), vtype = GRB.CONTINUOUS, name = "y", lb = 0)
     d = mdl.addMVar(shape = (n,1), vtype = GRB.CONTINUOUS, name = "d", lb = 0)
 
-    for j in ins.nodes:
-        x[j,j].ub = 0
+    #for j in ins.nodes:
+    #    x[j,j].ub = 0
 
     mdl.setObjective((x * D).sum())
 
@@ -333,19 +333,23 @@ def write_model(ins):
     mdl.addConstr(x <= y, name = "R3") 
     mdl.addConstr(y <= Q * x, name = "R4") 
     mdl.addConstr(d + D - d.T <= M * (1- x), name = "R5") 
-    mdl.addConstr(d >= earliest, name = "R6") 
-    mdl.addConstr(d <= latest, name = "R7")
+    mdl.addConstr(d >= e, name = "R6") 
+    mdl.addConstr(d <= l, name = "R7")
 
-    return mdl,x,y,d
+    mdl.write("MILP.lp")
+    return mdl
 
 def gurobi_fast_solution(ins, time_limit = 1800, start = None, rando = False):
+    # mdl = gp.read("MILP.lp")
     mdl = ins.mdl.copy()
     v = mdl.getVars()
+    print(v[0:250])
 
     for j in ins.nodes[1:]:
         if start:
             i = start.parent[j]
             xij = v[i * ins.n + j]
+            # print(i,j,xij.varname)
             xij.Start = 1 # fijar solucion inicial
             if rando and random() < 0.1:
                 xij.lb = 1
@@ -360,7 +364,7 @@ def gurobi_fast_solution(ins, time_limit = 1800, start = None, rando = False):
 
     departure = np.zeros(ins.n)
     for i,j in ins.edges:
-        xij = mdl.getVarByName(f"x[{j},{j}]") 
+        xij = mdl.getVarByName(f"x[{i},{j}]") 
         if xij.X > 0.9:
             s.parent[j] = i
             dj = mdl.getVarByName(f"d[{j},0]") 
@@ -711,12 +715,8 @@ def main(gurobi_prop, ils_prop, global_time = 60, name = "instances/rc108.txt", 
     ins.capacity = 5
     initialize(ins)
 
-    mdl,x,y,d = write_model(ins)
-    ins.mdl = mdl
-    ins.x = x
-    ins.y = y
-    ins.d = d
-    
+    write_model(ins)
+
     s, cost = prim(ins, vis = False, initial = True)
     print("prim:", cost)
 
@@ -758,11 +758,8 @@ def test(gurobi_prop, ils_prop, global_time, q, nnodes, ins_folder):
         ins.capacity = q
         initialize(ins)
 
-        mdl,x,y,d = write_model(ins)
-        ins.mdl = mdl
-        ins.x = x
-        ins.y = y
-        ins.d = d
+        mdl = write_model(ins)
+        ins.mdl = mdl.copy()
 
         s, cost = prim(ins, vis = False, initial = True)
         print("prim:", cost)
@@ -867,7 +864,7 @@ if __name__ == "__main__":
     capacities = [1000,20,15,10,5]
 
     global_time = 60
-    nnodes = 150
+    nnodes = 200
     for q in capacities:
         ins_folder = "gehring instances/200"
         gurobi_prop = 20
