@@ -249,51 +249,36 @@ def prim(ins, vis  = False, initial = False):
 
 def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initial = False, start = None, rando = False):
     n = ins.n
-
-    edges, cost = gp.multidict({(i,j): D[i,j] for (i,j) in ins.edges})
-    nodes, earliest, latest, demands = gp.multidict({i: (ins.earliest[i], ins.latest[i], ins.demands[i]) for i in ins.nodes })
-    nodesv = nodes[1:]
-
-    M = max(latest.values()) + max(cost.values())
+    earliest = ins.earliest.reshape(n,1)
+    latest = ins.latest.reshape(n,1)
+    M = latest.max() + D.max()
 
     # model and variables
-    if verbose:
-        mdl = gp.Model(ins.name)
-    else:
-        mdl = gp.Model(ins.name, env = env)     
-    if rando:
-        x = gp.tupledict()
-        for i, j in edges:
-            ii = start.parent[j]
-            if ii == i:
-                if random() < 0.1:
-                    x[i,j] = mdl.addVar(vtype = GRB.BINARY, lb=1, ub=1, name = "x[%d,%d]" % (i,j))
-                else:
-                    x[i,j] = mdl.addVar(vtype = GRB.BINARY, lb=0, ub=1, name = "x[%d,%d]" % (i,j))
-            else:
-                x[i,j] = mdl.addVar(vtype = GRB.BINARY, lb=0, ub=1, name = "x[%d,%d]" % (i,j))
+    mdl = gp.Model(ins.name, env = env)
 
-    else:
-        x = mdl.addVars(edges, vtype = GRB.BINARY, name = "x") #
-    y = mdl.addVars(edges, vtype = GRB.CONTINUOUS, name = "y", lb = 0)
-    d = mdl.addVars(nodes, vtype = GRB.CONTINUOUS, name = "d", lb = 0)
+    x = mdl.addMVar(shape = (n,n), vtype = GRB.BINARY, name = "x") #
+    y = mdl.addMVar(shape = (n,n), vtype = GRB.CONTINUOUS, name = "y", lb = 0)
+    d = mdl.addMVar(shape = (n,1), vtype = GRB.CONTINUOUS, name = "d", lb = 0)
 
-    if start is not None:
-        for j in nodesv:
-            i = start.parent[j]
-            x[(i,j)].Start = 1
-            d[j].Start = start.arrival[j]
+    x[0,0].ub = 0
+    for j in ins.nodes[1:]:
+        x[j,j].ub = 0 # fijar como cero la diagonal
+        if start:
+            i = start.parent[j] 
+            x[(i,j)].Start = 1 # fijar solucion inicial
+            # d[j].Start = start.arrival[j] # fijar salida en solución inicial
+            if rando and random() < 0.1:
+                x[i,j] = mdl.addVar(vtype = GRB.BINARY, lb=1, ub=1, name = "x[%d,%d]" % (i,j)) # rando contreras
 
-    mdl.setObjective(x.prod(cost))
+    mdl.addConstr(x[:,1:].sum(axis=0) == 1,name = "R1")
+    mdl.addConstr(y[:,1:].sum(axis=0) - y[1:,:].sum(axis = 1) == 1, name = "R2") 
+    mdl.addConstr(x <= y,name = "R3") 
+    mdl.addConstr(y <= Q * x, name = "R4") 
+    mdl.addConstr(d + D - d.T <= M * (1- x), name = "R5") 
+    mdl.addConstr(d >= earliest, name = "R6") 
+    mdl.addConstr(d <= latest, name = "R7")
 
-    R1 = mdl.addConstrs((gp.quicksum(x[(i,j)] for i in nodes if i!=j) == 1 for j in nodesv),name = "R1")
-    R2 = mdl.addConstrs((gp.quicksum(y[(i,j)] for i in nodes if i!=j) - gp.quicksum(y[(j,i)] for i in nodesv if i!=j) == demands[j] for j in nodesv), name = "R2") 
-    R3 = mdl.addConstrs((x[(i,j)] <= y[(i,j)] for i,j in edges),name = "R3") 
-    R4 = mdl.addConstrs((y[(i,j)] <= Q * x[(i,j)] for i,j in edges), name = "R4") 
-    R5 = mdl.addConstrs((d[i] + cost[(i,j)] - d[j] <= M * (1 - x[(i,j)]) for i,j in edges), name = "R5") 
-    R6 = mdl.addConstrs((d[i] >= earliest[i] for i in nodes), name = "R6") 
-    R7 = mdl.addConstrs((d[i] <= latest[i] for i in nodes), name = "R7")
-
+    mdl.setObjective((x * D).sum())
 
     mdl.Params.TimeLimit = time_limit
     mdl.Params.Threads = 1
@@ -309,32 +294,85 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initia
         best_bound = mdl.ObjBound
         gap = mdl.MIPGap
 
-        if vis:
-            for i,j in edges:
-                if x[i,j].X > 0.9:
-                    s.parent[j] = i
-            visualize(ins.xcoords, ins.ycoords, s)
-
         return objective_value, time, best_bound, gap
 
     else: 
         departure = np.zeros(n)
-        for i,j in edges:
+        for i,j in ins.edges:
             if x[(i,j)].X > 0.9:
                 s.parent[j] = i
                 departure[j] = d[j].X
 
-        for j in sorted(nodes, key = lambda x: departure[x]):
-            if j != 0:
-                k = s.parent[j]
-                s.connect(k,j)
-
-        if vis:
-            visualize(ins.xcoords, ins.ycoords, s)
+        for j in sorted(ins.nodes[1:], key = lambda x: departure[x]):
+            k = s.parent[j]
+            s.connect(k,j)
 
         optimal = True if mdl.MIPGap < 0.0001 else False
 
         return s, objective_value, optimal
+    
+def write_model(ins):
+    n = ins.n
+    earliest = ins.earliest.reshape(n,1)
+    latest = ins.latest.reshape(n,1)
+
+    M = latest.max() + D.max()
+    mdl = gp.Model(ins.name, env = env)
+
+    x = mdl.addMVar(shape = (n,n), vtype = GRB.BINARY, name = "x") #
+    y = mdl.addMVar(shape = (n,n), vtype = GRB.CONTINUOUS, name = "y", lb = 0)
+    d = mdl.addMVar(shape = (n,1), vtype = GRB.CONTINUOUS, name = "d", lb = 0)
+
+    for j in ins.nodes:
+        x[j,j].ub = 0
+
+    mdl.setObjective((x * D).sum())
+
+    mdl.addConstr(x[:,1:].sum(axis=0) == 1,name = "R1")
+    mdl.addConstr(y[:,1:].sum(axis=0) - y[1:,:].sum(axis = 1) == 1, name = "R2") 
+    mdl.addConstr(x <= y, name = "R3") 
+    mdl.addConstr(y <= Q * x, name = "R4") 
+    mdl.addConstr(d + D - d.T <= M * (1- x), name = "R5") 
+    mdl.addConstr(d >= earliest, name = "R6") 
+    mdl.addConstr(d <= latest, name = "R7")
+
+    return mdl,x,y,d
+
+def gurobi_fast_solution(ins, time_limit = 1800, start = None, rando = False):
+    mdl = ins.mdl.copy()
+    v = mdl.getVars()
+
+    for j in ins.nodes[1:]:
+        if start:
+            i = start.parent[j]
+            xij = v[i * ins.n + j]
+            xij.Start = 1 # fijar solucion inicial
+            if rando and random() < 0.1:
+                xij.lb = 1
+            pass
+    mdl.Params.TimeLimit = time_limit
+    mdl.Params.Threads = 1
+
+    solution = mdl.optimize()
+    obj = mdl.getObjective()
+    objective_value = obj.getValue()
+    s = tree(ins.n, Q, D)
+
+    departure = np.zeros(ins.n)
+    for i,j in ins.edges:
+        xij = mdl.getVarByName(f"x[{j},{j}]") 
+        if xij.X > 0.9:
+            s.parent[j] = i
+            dj = mdl.getVarByName(f"d[{j},0]") 
+            departure[j] = dj.X
+
+    for j in sorted(ins.nodes[1:], key = lambda x: departure[x]):
+        k = s.parent[j]
+        s.connect(k,j)
+
+    optimal = True if mdl.MIPGap < 0.0001 else False
+
+    return s, objective_value, optimal
 
 class branch_bound:
     def __init__(self, branch):
@@ -672,6 +710,12 @@ def main(gurobi_prop, ils_prop, global_time = 60, name = "instances/rc108.txt", 
     ins = instance(name, capacity, node_data, nnodes)
     ins.capacity = 5
     initialize(ins)
+
+    mdl,x,y,d = write_model(ins)
+    ins.mdl = mdl
+    ins.x = x
+    ins.y = y
+    ins.d = d
     
     s, cost = prim(ins, vis = False, initial = True)
     print("prim:", cost)
@@ -679,7 +723,7 @@ def main(gurobi_prop, ils_prop, global_time = 60, name = "instances/rc108.txt", 
     global start_time
     global_start_time = perf_counter()
 
-    s, cost, optimal = gurobi_solution(ins, vis = False, time_limit= gurobi_time, verbose = False, initial=True, start = s)
+    s, cost, optimal = gurobi_fast_solution(ins, time_limit= gurobi_time, start = s)
     print("gurobi:", cost)
     initial_solution = lambda x: (s, cost)
     if not optimal:
@@ -688,7 +732,7 @@ def main(gurobi_prop, ils_prop, global_time = 60, name = "instances/rc108.txt", 
 
         while perf_counter() - global_start_time < global_time:
             time_left = global_time - perf_counter() + global_start_time
-            s, cost, optimal = gurobi_solution(ins, vis = False, time_limit= min(gurobi_time, time_left), verbose = False, initial=True, start = s, rando = True)
+            s, cost, optimal = gurobi_fast_solution(ins, time_limit= min(gurobi_time, time_left),  start = s, rando = True)
             print("gurobi:", cost)
             if optimal: 
                 break
@@ -705,6 +749,7 @@ def test(gurobi_prop, ils_prop, global_time, q, nnodes, ins_folder):
 
     gurobi_time = global_time * gurobi_prop
     ils_time = global_time * ils_prop
+    global_time = global_time - gurobi_time
 
     for p in instances:
         print(p)
@@ -713,14 +758,19 @@ def test(gurobi_prop, ils_prop, global_time, q, nnodes, ins_folder):
         ins.capacity = q
         initialize(ins)
 
+        mdl,x,y,d = write_model(ins)
+        ins.mdl = mdl
+        ins.x = x
+        ins.y = y
+        ins.d = d
+
         s, cost = prim(ins, vis = False, initial = True)
         print("prim:", cost)
 
-        s, cost, optimal = gurobi_solution(ins, vis = False, time_limit= gurobi_time, verbose = False, initial=True, start = s)
+        s, cost, optimal = gurobi_fast_solution(ins, time_limit= gurobi_time, start = s)
         print("gurobi:", cost)
         initial_solution = (deepcopy(s), cost)
         if not optimal:
-            global_time = global_time - gurobi_time
             solutions = []
             best_solution = cost
             times = []
@@ -735,14 +785,14 @@ def test(gurobi_prop, ils_prop, global_time, q, nnodes, ins_folder):
 
                 while perf_counter() - time < global_time:
                     time_left = global_time - perf_counter() + time
-                    s, cost, optimal = gurobi_solution(ins, vis = False, time_limit= min(gurobi_time, time_left), verbose = False, initial=True, start = deepcopy(s), rando = True)
+                    print(time_left)
+                    s, cost, optimal = gurobi_fast_solution(ins, time_limit= min(gurobi_time, time_left), start = deepcopy(s), rando = True)
                     print("gurobi:", cost)
-                    if optimal: 
-                        break
 
                     initial_ = (deepcopy(s), cost)
                     if perf_counter() - time < global_time:
                         time_left = global_time - perf_counter() + time
+                        print(time_left)
                         s, cost = ILS_solution(ins, semilla = seed, initial_solution = deepcopy(initial_), time_limit = min(ils_time, time_left) )
                         print("ILS:", cost)
 
@@ -814,53 +864,15 @@ if __name__ == "__main__":
     # e_size = 20
     # BRANCH_TIME = 5
     # INITIAL_TRIGGER = 40
-    capacities = [1000,20,15, 10, 5]
+    capacities = [1000,20,15,10,5]
 
     global_time = 60
-    nnodes = 100
+    nnodes = 150
     for q in capacities:
-        ins_folder = "instances"
-        gurobi_prop = 10
+        ins_folder = "gehring instances/200"
+        gurobi_prop = 20
         ils_prop = 10
-        nombre = f"MLM proporciones {gurobi_prop}-{ils_prop}-{global_time} Q-{q} n-{nnodes}"
+        nombre = f"MLM_proporciones_{gurobi_prop}_{ils_prop}_{global_time}_Q{q}_n{nnodes}"
         test(gurobi_prop=gurobi_prop/global_time, ils_prop=ils_prop/global_time, 
              global_time=global_time, q=q, nnodes=nnodes, ins_folder=ins_folder)
         
-# argv = "-a 0.048 -f 9000 -e 19000 -s 20 -n 7.688 -x 0.058 -y 0.744 -z 0.178 -c 0.019 -r 6500 -u 0.013 -v 0.1 -w 0.887 -t 5"
-#     argv = argv.split()
-#     try:
-#         opts, args = getopt.getopt(argv, 'a:f:e:s:n:x:y:z:c:r:u:v:w:t:')
-#     except getopt.GetoptError:
-#         print ('test.py -a acceptance -f feasibility_param -e elite_param -s size_elite -n penalization -x pert1 -y pert2 -z pert3 -c pert4 -r revision_param -u local1 -v local2 -w local3 -t branch_time')
-#         sys.exit(2)
-
-#     for opt, arg in opts:
-#         print(opt,arg)
-#         if opt == '-a':
-#             acceptance = float(arg)
-#         elif opt == '-f':
-#             feasibility_param = int(round(float(arg)))
-#         elif opt == '-e':
-#             elite_param = int(round(float(arg)))
-#         elif opt == '-s':
-#             size_elite = int(arg)
-#         elif opt == '-n':
-#             penalization = float(arg)
-#         elif opt == '-x':
-#             p1 = float(arg)
-#         elif opt == '-y':
-#             p2 = float(arg)
-#         elif opt == '-z':
-#             p3 = float(arg)
-#         elif opt == '-c':
-#             p4 = float(arg)
-#         elif opt == '-r':
-#             revision_param = int(round(float(arg)))
-#         elif opt == '-u':
-#             l1 = float(arg)
-#         elif opt == '-v':
-#             l2 = float(arg)
-#         elif opt == '-w':
-#             l3 = float(arg)
-#         elif opt == '-t':
-#             BRANCH_TIME = float(arg)

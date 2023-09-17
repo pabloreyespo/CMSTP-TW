@@ -336,7 +336,6 @@ def write_model(ins):
     mdl.addConstr(d >= earliest, name = "R6") 
     mdl.addConstr(d <= latest, name = "R7")
 
-    mdl.write("MILP.lp")
     return mdl,x,y,d
 
 def gurobi_fast_solution(ins, time_limit = 1800, start = None, rando = False):
