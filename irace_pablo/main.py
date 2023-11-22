@@ -1,107 +1,116 @@
-from matheuristic_cython import *
+from matheuristic_prompt import *
 import getopt,sys
 
 env = gp.Env(empty=True)
 env.setParam("OutputFlag",0)
 env.start()
 
-def main():
-    global ins, xcoords, ycoords, latest, earliest, D, Q
+def main(gurobi_prop, ils_prop, global_time, q, nnodes):
+    results = list()
 
-    xcoords, ycoords = ins.xcoords, ins.ycoords
-    earliest, latest = ins.earliest, ins.latest
-    D = ins.cost
-    Q = ins.capacity
-    
+    gurobi_time = global_time * gurobi_prop
+    ils_time = global_time * ils_prop
+    global_time = global_time - gurobi_time
+
+    name, capacity, node_data = read_instance(path)
+    ins = instance(name, capacity, node_data, nnodes)
+    ins.capacity = q
+    initialize(ins)
+
+    mdl = write_model(ins)
+    ins.mdl = mdl.copy()
+
     s, cost = prim(ins, vis = False, initial = True)
     print("prim:", cost)
-    s, cost = gurobi_solution(ins, vis = False, time_limit= gurobi_time, verbose = False, initial=True, start = s)
+
+    s, cost, optimal = gurobi_fast_solution(ins, time_limit= gurobi_time, start = s)
     print("gurobi:", cost)
-    initial_solution = lambda x: (deepcopy(s), cost)
-    solution_sum = 0
 
-    pp1 = p1
-    pp2 = p1 + p2
-    pp3 = p1 + p2 + p3
-    lsp1 = l1
-    lsp2 = l1 + l2
+    initial_solution = (deepcopy(s), cost)
+    if not optimal:
+        solution_sum = 0
+        tries = 10
+        for seed in range(tries):
+            print(seed)
+            time = perf_counter()
+            try:
+                s, cost = ILS_solution(ins, semilla = seed, initial_solution = deepcopy(initial_solution), time_limit = ils_time )
+                print("ILS:", cost)
 
-    for i in range(10):
-        obj, time, best_bound, gap = ILS_solution(
-            ins, semilla = i, acceptance = acceptance,
-            feasibility_param = feasibility_param, elite_param = elite_param, elite_size = size_elite, p = penalization,
-            pp1 = pp1, pp2 = pp2, pp3 = pp3, lsp1 = lsp1, lsp2= lsp2, initial_solution = initial_solution,
-            elite_revision_param = revision_param, vis  = False, verbose = False, time_limit = 60 - gurobi_time)
-        solution_sum += obj
+                while perf_counter() - time < global_time:
+                    time_left = global_time - perf_counter() + time
+                    print(time_left)
+                    s, cost, optimal = gurobi_fast_solution(ins, time_limit= min(gurobi_time, time_left), start = deepcopy(s), rando = True)
+                    print("gurobi:", cost)
 
-    print("Mejor", solution_sum/10)
+                    initial_ = (deepcopy(s), cost)
+                    if perf_counter() - time < global_time:
+                        time_left = global_time - perf_counter() + time
+                        print(time_left)
+                        s, cost = ILS_solution(ins, semilla = seed, initial_solution = deepcopy(initial_), time_limit = min(ils_time, time_left) )
+                        print("ILS:", cost)
+            except:
+                print(f"Error en la ejecución {seed} de la instancia {path} con carga {q}")
+                s, cost = deepcopy(initial_solution)
 
+            solution_sum += cost
+        print("Mejor", solution_sum/10)
+    else:
+        print("Mejor", cost)
 
 if __name__ == "__main__":
-    argv = sys.argv[1:]
-
-    # path = 'Instances/r101.txt' #"-p"
-    # Q = 10
-    # acceptance = 0.05 # '-a'
-    # feasibility_param = 1000 # '-f'
-    # elite_param = 2500 # '-e'
-    # size_elite = 20 # '-s'
-    # penalization = 0.5 # '-z'
-    # p1 = 0.4 # '-p1'
-    # p2 = 0.2 # '-p2'
-    # p3 = 0.4 # '-p3'
-    # p4 =  # '-p4
-    # revision_param = 1500 # '-r'
-    # local_search_param = 0.8 # '-l'
-    # BRANCH_TIME = 1 # '-t'
-    # gurobi_time = 30 # '-g'
-
+    argv = sys.argv[1:] # + "-a 0.032 -f 10000 -e 20000 -r 6000 -s 20 -n 7.001 -x 0.121 -y 0.677 -z 0.186 -c 0.016 -u 0.013 -v 0.157 -w 0.830 -b 5".split()
     try:
-        opts, args = getopt.getopt(argv, 'p:Q:N:a:f:e:s:n:x:y:z:c:r:u:v:w:t:')
+        opts, args = getopt.getopt(argv, 'p:Q:K:a:d:f:e:r:s:n:x:y:z:c:u:v:w:b:', 
+                                   ["path = ","capacity = ", "nnodes = ",
+                                    "acceptance = ", "rando = ","feasibility_param = ","elite_param = ","size_elite = ","penalization = ",
+                                    "p1 = ","p2 = ","p3 = ","p4 = ","revision_param = ","local1 = ","local2 = ","local3 = ","branch_time = "])
+        print("Leido")
     except getopt.GetoptError:
-        print ('test.py -p path -Q capacity -N n_nodes -a acceptance -f feasibility_param -e elite_param -s size_elite -n penalization -x pert1 -y pert2 -z pert3 -c pert4 -r revision_param -u local1 -v local2 -w local3 -t branch_time')
-        sys.exit(2)
-
+        print ('test.py -q capacity -k nnodes -a acceptance -f feasibility_param -e elite_param -s size_elite -n penalization -x pert1 -y pert2 -z pert3 -c pert4 -r revision_param -u local1 -v local2 -w local3 -b branch_time')
+    
     for opt, arg in opts:
-        if opt == '-p':
-            print(arg)
-            name, capacity, node_data = read_instance(arg)
-        elif opt == '-Q':
-            Q = int(arg)  
-        elif opt == '-N':
-            problem_size = int(arg)
-        elif opt == '-a':
-            acceptance = float(arg)
-        elif opt == '-f':
-            feasibility_param = int(round(float(arg)))
-        elif opt == '-e':
-            elite_param = int(round(float(arg)))
-        elif opt == '-s':
-            size_elite = int(arg)
-        elif opt == '-n':
-            penalization = float(arg)
-        elif opt == '-x':
-            p1 = float(arg)
-        elif opt == '-y':
-            p2 = float(arg)
-        elif opt == '-z':
-            p3 = float(arg)
-        elif opt == '-c':
-            p4 = float(arg)
-        elif opt == '-r':
-            revision_param = int(round(float(arg)))
-        elif opt == '-u':
-            l1 = float(arg)
-        elif opt == '-v':
-            l2 = float(arg)
-        elif opt == '-w':
-            l3 = float(arg)
-        elif opt == '-t':
+        if opt in ['-p','--path']:
+            path = str(arg)
+        elif opt in ['-Q','--capacity']:
+            capacity = int(arg)
+        elif opt in ['-K','--nnodes']:
+            nnodes = int(arg)
+        elif opt in ['-a','--acceptance']:
+            mu_acceptance = float(arg)
+        elif opt in ['-d','--rando']:
+            RANDO_PARAM = float(arg)
+        elif opt in ['-f','--feasibility_param']:
+            alpha_unfeasible = int(round(float(arg)))
+        elif opt in ['-e','--elite_param']:
+            beta_elite = int(round(float(arg)))
+        elif opt in ['-r','--revision_param']:
+            gamma_intensification = int(round(float(arg)))
+        elif opt in ['-s','--size_elite']:
+            elite_size = int(arg)
+        elif opt in ['-n','--penalization']:
+            rho = float(arg)
+        elif opt in ['-x','--p1']:
+            theta1 = float(arg)
+        elif opt in ['-y','--p2']:
+            theta2 = float(arg)
+        elif opt in ['-z','--p3']:
+            theta3 = float(arg)
+        elif opt in ['-c','--p4']:
+            theta4 = float(arg)
+        elif opt in ['-u','--local1']:
+            phi1 = float(arg)
+        elif opt in ['-v','--local2']:
+            phi2 = float(arg)
+        elif opt in ['-w','--local3']:
+            phi3 = float(arg)
+        elif opt in ['-b','--branch_time']:
             BRANCH_TIME = float(arg)
 
-    ins = instance(name, capacity, node_data, problem_size)
-    gurobi_time = 30
-    ins.capacity = Q
-    main()
+    INITIAL_TRIGGER = 40
+    gurobi_prop = 20
+    ils_prop = 10
+    global_time = 60
+    main(gurobi_prop=gurobi_prop/60, ils_prop=ils_prop/60, global_time=global_time, q=capacity, nnodes=nnodes)
 
-# python codes/main.py -p Instances/r101.txt -Q 10 -N 100 -a 0.05 -f 1000 -e 2500 -s 20 -n 0.5 -x 0.4 -y 0.2 -z 0.2 -c 0.2 -r 1500 -u 0.3 -v 0.3 -w 0.4 -t 1
+# -p instances/r106.txt -Q 10000 -K 100 -a 0.032 -f 10000 -e 20000 -r 6000 -s 20 -n 7.001 -x 0.121 -y 0.677 -z 0.186 -c 0.016 -u 0.013 -v 0.157 -w 0.830 -b 5
