@@ -850,9 +850,9 @@ if __name__ == "__main__":
     INITIAL_TRIGGER = 40
     gurobi_prop = 20
     ils_prop = 10
-    global_time = 60
+    global_time = 180
 
-    capacities = [10,5]# [1000,20,15,10,5]
+    capacities = [1000,20,15,10,5]
     nnodes = 200
     for q in capacities:
         nombre = f"MLM{conf_id}_{gurobi_prop}_{ils_prop}_{global_time}_Q{q}_n{nnodes}"
@@ -864,6 +864,24 @@ if __name__ == "__main__":
 # -i conf3 -a 0.009 -d 0.393 -f 13000 -e 13000 -s 30 -n 1.26 -x 0.197  -y 0.436 -z 0.363 -c 0.004 -r 7000 -u 0.132 -v 0.199 -w 0.669 -b 1
 # -i conf4 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0.139 -v 0.183 -w 0.679 -b 2
 # -i conf5 -a 0.009 -d 0.393 -f 12000 -e 18000 -s 40 -n 6.02 -x 0.049  -y 0.378 -z 0.378 -c 0.195 -r 6500 -u 0.024 -v 0.098 -w 0.879 -b 2
+
+# tests de componentnes (conf 4 es el ganador)
+        
+# -i version1 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0.139 -v 0.183 -w 0.679 -b 2
+# -i version2 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0.139 -v 0.183 -w 0.679 -b 2
+# -i version3 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0     -v 0.213 -w 0.787 -b 2
+# -i version4 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.250 -y 0.250 -z 0.250 -c 0.250 -r 8000 -u 0.333 -v 0.333 -w 0.333 -b 2
+
+# [Ayer 19:03] Carlos Emilio Contreras Bolton
+# Version 1: sin MILP-solver
+# [Ayer 19:04] Carlos Emilio Contreras Bolton
+# Version 2: sin intensification strategy
+# [Ayer 19:04] Carlos Emilio Contreras Bolton
+# Version 3: sin merge-branches-improvemen
+# [Ayer 19:06] Carlos Emilio Contreras Bolton
+# Version 4: todo igual solo que los parámetros, de operadores que se suman y dan 1, perturbación y búsqueda loca, en proporciones iguales
+
+
 
 
 # [19:21] Carlos Emilio Contreras Bolton

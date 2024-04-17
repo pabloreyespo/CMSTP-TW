@@ -1,21 +1,30 @@
 # Example training instances file
--p instances/rc208.txt -Q 5 -K 100
--p instances/rc108.txt -Q 5 -K 100
--p instances/rc203.txt -Q 10 -K 100
--p instances/rc107.txt -Q 10 -K 100
--p instances/rc207.txt -Q 15 -K 100
--p instances/rc203.txt -Q 15 -K 100
--p instances/rc103.txt -Q 20 -K 100
--p instances/r206.txt -Q 20 -K 100
--p instances/rc103.txt -Q 10000 -K 100
--p instances/r106.txt -Q 10000 -K 100
--p gehring_instances/200/rc2_2_4.txt -Q 5 -K 150
--p gehring_instances/200/r1_2_8.txt -Q 5 -K 150
--p gehring_instances/200/r1_2_4.txt -Q 10 -K 150
--p gehring_instances/200/r2_2_7.txt -Q 10 -K 150
--p gehring_instances/200/rc2_2_4.txt -Q 15 -K 150
--p gehring_instances/200/c2_2_4.txt -Q 15 -K 150
--p gehring_instances/200/rc1_2_4.txt -Q 20 -K 150
--p gehring_instances/200/c2_2_4.txt -Q 20 -K 150
--p gehring_instances/200/r1_2_4.txt -Q 10000 -K 150
--p gehring_instances/200/rc2_2_4.txt -Q 10000 -K 150
+
+# de las peores en MLM
+-p instances/rc204.txt  -Q 5     -K 100
+-p instances/c205.txt   -Q 5     -K 100
+-p instances/rc203.txt  -Q 10    -K 100
+-p instances/c204.txt   -Q 10    -K 100
+-p instances/rc103.txt  -Q 15    -K 100
+-p instances/r206.txt   -Q 20    -K 100
+-p instances/r210.txt   -Q 10000 -K 100
+
+# de las peores en version 4: tamano 150
+-p gehring_instances/200/r1_2_4.txt  -Q 5     -K 150
+-p gehring_instances/200/r2_2_8.txt  -Q 5     -K 150
+-p gehring_instances/200/rc1_2_4.txt -Q 10    -K 150
+-p gehring_instances/200/c2_2_4.txt  -Q 15    -K 150
+-p gehring_instances/200/c2_2_9.txt  -Q 15    -K 150
+-p gehring_instances/200/rc2_2_0.txt -Q 20    -K 150
+-p gehring_instances/200/r2_2_8.txt  -Q 10000 -K 150
+
+# de las peores en version 4: tamano 200
+
+-p gehring_instances/200/c1_2_4.txt  -Q 10000 -K 200
+-p gehring_instances/200/r1_2_8.txt  -Q 10000 -K 200
+-p gehring_instances/200/c2_2_4.txt  -Q 20    -K 200
+-p gehring_instances/200/r2_2_2.txt  -Q 10    -K 200
+-p gehring_instances/200/r1_2_7.txt  -Q 10    -K 200
+-p gehring_instances/200/r1_2_4.txt  -Q 15    -K 200
+-p gehring_instances/200/c2_2_9.txt  -Q 15    -K 200
+

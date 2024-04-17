@@ -1,0 +1,55 @@
+\begin{table}[H]
+\centering
+\caption{Performance against Gurobi on large instances in 60 seconds}
+\label{tab:3lm_resuts200T60}
+\begin{tabular}{c rrrr rr rrr rr}
+\toprule
+       Q & \multicolumn{4}{c}{Gurobi (3600s)} & \multicolumn{2}{c}{Gurobi (60s)} & \multicolumn{3}{c}{3LM (60s)} & \multicolumn{2}{c}{Improvement (\%)} \\
+         &       Gap (\%) & LB Gap (\%) & Time (sec) & Hits &     Gap (\%) & Hits & Min. Gap (\%) & Avg. Gap (\%) & Hits &             Min. & Avg. \\
+\cmidrule(lr){1-1} \cmidrule(lr){2-5} \cmidrule(lr){2-5} \cmidrule(lr){6-7} \cmidrule(lr){8-10} \cmidrule(lr){11-12}
+$\infty$ &           0.00 &        0.45 &    1650.73 & 12.0 &        20.02 & 11.0 &          5.10 &          7.42 &  9.0 &            11.36 & 9.46 \\
+      20 &           0.02 &        4.20 &    3552.94 &  0.0 &        12.00 &  0.0 &          6.30 &          9.32 &  1.0 &             4.75 & 2.09 \\
+      15 &           0.09 &        5.28 &    3586.08 &  0.0 &         9.13 &  0.0 &          4.48 &          7.04 &  0.0 &             4.05 & 1.76 \\
+      10 &           0.03 &        6.10 &    3600.38 &  0.0 &         9.03 &  1.0 &          5.38 &          8.18 &  0.0 &             3.20 & 0.64 \\
+       5 &           0.01 &        3.58 &    3600.24 &  0.0 &         6.14 &  0.0 &          3.76 &          5.45 &  0.0 &             2.25 & 0.66 \\
+\midrule
+ overall &           0.03 &        3.92 &    3198.07 &  2.4 &        11.26 &  2.4 &          5.00 &          7.48 &  2.0 &             5.12 & 2.92 \\
+\bottomrule
+\end{tabular}
+\end{table}\begin{table}[H]
+\centering
+\caption{Performance against Gurobi on large instances in 60 seconds}
+\label{tab:3lm_resuts200T60}
+\begin{tabular}{c rrrr rr rrr rr}
+\toprule
+       Q & \multicolumn{4}{c}{Gurobi (3600s)} & \multicolumn{2}{c}{Gurobi (60s)} & \multicolumn{3}{c}{3LM (60s)} & \multicolumn{2}{c}{Improvement (\%)} \\
+         &       Gap (\%) & LB Gap (\%) & Time (sec) & Hits &     Gap (\%) & BKS Hits & Min. Gap (\%) & Avg. Gap (\%) & BKS Hits &             Min. & Avg. \\
+\cmidrule(lr){1-1} \cmidrule(lr){2-5} \cmidrule(lr){2-5} \cmidrule(lr){6-7} \cmidrule(lr){8-10} \cmidrule(lr){11-12}
+$\infty$ &           0.00 &        0.45 &    1650.73 & 12.0 &        20.02 &     11.0 &          5.10 &          7.42 &      9.0 &            11.36 & 9.46 \\
+      20 &           0.02 &        4.20 &    3552.94 &  0.0 &        12.00 &      0.0 &          6.30 &          9.32 &      1.0 &             4.75 & 2.09 \\
+      15 &           0.09 &        5.28 &    3586.08 &  0.0 &         9.13 &      0.0 &          4.48 &          7.04 &      0.0 &             4.05 & 1.76 \\
+      10 &           0.03 &        6.10 &    3600.38 &  0.0 &         9.03 &      1.0 &          5.38 &          8.18 &      0.0 &             3.20 & 0.64 \\
+       5 &           0.01 &        3.58 &    3600.24 &  0.0 &         6.14 &      0.0 &          3.76 &          5.45 &      0.0 &             2.25 & 0.66 \\
+\midrule
+ overall &           0.03 &        3.92 &    3198.07 &  2.4 &        11.26 &      2.4 &          5.00 &          7.48 &      2.0 &             5.12 & 2.92 \\
+\bottomrule
+\end{tabular}
+\end{table}\begin{table}[H]
+\centering
+\caption{Performance against Gurobi on large instances in 60 seconds}
+\label{tab:3lm_resuts200T60}
+\begin{tabular}{c rrrr rr rrr rr}
+\toprule
+       Q & \multicolumn{4}{c}{Gurobi (3600s)} & \multicolumn{2}{c}{Gurobi (60s)} & \multicolumn{3}{c}{3LM (60s)} & \multicolumn{2}{c}{Improvement (\%)} \\
+         &       Gap (\%) & LB Gap (\%) & Time (sec) & Hits &     Gap (\%) & BKS Hits & Min. Gap (\%) & Avg. Gap (\%) & BKS Hits &             Min. & Avg. \\
+\cmidrule(lr){1-1} \cmidrule(lr){2-5} \cmidrule(lr){2-5} \cmidrule(lr){6-7} \cmidrule(lr){8-10} \cmidrule(lr){11-12}
+$\infty$ &           0.00 &        0.45 &    1650.73 & 12.0 &        20.02 &     11.0 &          5.10 &          7.42 &      9.0 &            11.36 & 9.46 \\
+      20 &           0.02 &        4.20 &    3552.94 &  0.0 &        12.00 &      0.0 &          6.30 &          9.32 &      1.0 &             4.75 & 2.09 \\
+      15 &           0.09 &        5.28 &    3586.08 &  0.0 &         9.13 &      0.0 &          4.48 &          7.04 &      0.0 &             4.05 & 1.76 \\
+      10 &           0.03 &        6.10 &    3600.38 &  0.0 &         9.03 &      1.0 &          5.38 &          8.18 &      0.0 &             3.20 & 0.64 \\
+       5 &           0.01 &        3.58 &    3600.24 &  0.0 &         6.14 &      0.0 &          3.76 &          5.45 &      0.0 &             2.25 & 0.66 \\
+\midrule
+ overall &           0.03 &        3.92 &    3198.07 &  2.4 &        11.26 &      2.4 &          5.00 &          7.48 &      2.0 &             5.12 & 2.92 \\
+\bottomrule
+\end{tabular}
+\end{table}

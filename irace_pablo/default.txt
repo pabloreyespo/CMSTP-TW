@@ -12,4 +12,4 @@
 ## are not enabled for a given configuration) and, if given, the
 ## constraints that describe forbidden configurations.
 acceptance rando feasibility_param elite_param size_elite penalization pert1 pert2 pert3 pert4 revision_param local1 local2 local3 time_branch
-0.032 0.1 10000 20000 20 7.001 0.121 0.677 0.186 0.016 6000 0.013 0.157 0.830 5
+0.005      0.29  15000             13000       40         3.709        0.250 0.250 0.250 0.250 8000           0.333  0.333  0.333  2

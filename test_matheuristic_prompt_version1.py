@@ -1,13 +1,15 @@
+#!/usr/bin/env python3.9
+
 from copy import deepcopy
 import gurobipy as gp
 from gurobipy import GRB
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 from operators_cython import perturbation, best_father, fitness
 
 import numpy as np
 import pandas as pd
 import os, getopt
-from scipy.spatial.distance import cdist
+#from scipy.spatial.distance import cdist
 from math import inf, sqrt
 from random import choice, seed, random
 from sortedcollections import SortedDict
@@ -78,8 +80,16 @@ class instance():
 
         # cost = time = distance for simplicity
         global D
-        aux = np.vstack((self.xcoords, self.ycoords)).T
-        D  = cdist(aux,aux, metric='euclidean')
+        #aux = np.vstack((self.xcoords, self.ycoords)).T
+        #D  = cdist(aux,aux, metric='euclidean')
+        #global D
+        D = np.zeros((n,n))
+        for i in range(n):
+            for j in range(i+1,n):
+                if i != j:
+                    D[i,j] = D[j,i]= self.dist(i,j)
+
+        #self.cost = D
 
         self.cost = D
         self.maxcost = self.cost.mean()
@@ -285,6 +295,7 @@ def gurobi_solution(ins, vis = False, time_limit = 1800, verbose = False, initia
     R7 = mdl.addConstrs((d[i] <= latest[i] for i in nodes), name = "R7")
 
     mdl.Params.TimeLimit = time_limit
+    #mdl.Params.MemLimit = 4
     mdl.Params.Threads = 1
 
     solution = mdl.optimize()
@@ -342,7 +353,7 @@ def write_model(ins):
     R6 = mdl.addConstrs((d[i] >= earliest[i] for i in nodes), name = "R6") 
     R7 = mdl.addConstrs((d[i] <= latest[i] for i in nodes), name = "R7")
 
-    mdl.write("MILP.lp")
+    mdl.update()
     return mdl
 
 def gurobi_fast_solution(ins, time_limit = 1800, start = None, rando = False):
@@ -361,6 +372,7 @@ def gurobi_fast_solution(ins, time_limit = 1800, start = None, rando = False):
             pass
         
     mdl.Params.TimeLimit = time_limit
+    #mdl.Params.MemLimit = 4
     mdl.Params.Threads = 1
 
     solution = mdl.optimize()
@@ -478,6 +490,7 @@ def branch_gurobi(branch, parent, initial = False):
     R7 = mdl.addConstrs((d[i] <= latests[i] for i in nodes), name = "R7")
 
     mdl.Params.TimeLimit = BRANCH_TIME
+    #mdl.Params.MemLimit = 4
     mdl.Params.Threads = 1
     # ajustar un unicio para las variables
     if initial:
@@ -600,10 +613,10 @@ def optimal_branch(s):
 
 def local_search(s):
     x = random()
-    if x < phi2:
+    if x < phi1:
         # print("LA")
         return merge_branches(s)
-    elif x < phi1:
+    elif x < phi2:
         # print("LB")
         return best_father(s,1, latest, rho)
     else:
@@ -708,59 +721,22 @@ def ILS_solution(ins, semilla = None, iterMax = 15000,  initial_solution = None,
     text = f'{count:^10.3f}/{limit:10.3f} [{"#"*int(count*50//limit):<50}] cost: {candidate_cost:^10.3f} best: {cost_best:^10.3f} best_it: {best_it}/{it}'
     print(text)
 
-    if vis: visualize(ins.xcoords, ins.ycoords, s_best)
+    #if vis: visualize(ins.xcoords, ins.ycoords, s_best)
     return s_best, cost_best
 
-def main(gurobi_prop, ils_prop, global_time = 60, name = "instances/rc108.txt", nnodes = 100):
-
-    gurobi_time = global_time * gurobi_prop
-    ils_time = global_time * ils_prop
-
-    name, capacity, node_data = read_instance("instances/rc101.txt")
-    ins = instance(name, capacity, node_data, nnodes)
-    ins.capacity = 5
-    initialize(ins)
-
-    write_model(ins)
-
-    s, cost = prim(ins, vis = False, initial = True)
-    print("prim:", cost)
-
-    global start_time
-    global_start_time = perf_counter()
-
-    s, cost, optimal = gurobi_fast_solution(ins, time_limit= gurobi_time, start = s)
-    print("gurobi:", cost)
-    initial_solution = lambda x: (s, cost)
-    if not optimal:
-        s, cost = ILS_solution(ins, semilla = 42, initial_solution = deepcopy(initial_solution), time_limit = ils_time )
-        print("ILS:", cost)
-
-        while perf_counter() - global_start_time < global_time:
-            time_left = global_time - perf_counter() + global_start_time
-            s, cost, optimal = gurobi_fast_solution(ins, time_limit= min(gurobi_time, time_left),  start = s, rando = True)
-            print("gurobi:", cost)
-            if optimal: 
-                break
-
-            initial_ = lambda x: (s, cost)
-            if perf_counter() - global_start_time < global_time:
-                time_left = global_time - perf_counter() + global_start_time
-                s, cost = ILS_solution(ins, semilla = 42, initial_solution = deepcopy(initial_), time_limit = min(ils_time, time_left) )
-                print("ILS:", cost)
-
 def test(gurobi_prop, ils_prop, global_time, q, nnodes):
-    folder = "gehring instances/200" if nnodes > 100 else "instances"
+    global theta1, theta2, theta3, phi1, phi2
+    folder = "gehring_instances/200" if nnodes > 100 else "instances"
     instances = os.listdir(folder)
     results = list()
 
     gurobi_time = global_time * gurobi_prop
     ils_time = global_time * ils_prop
     global_time = global_time - gurobi_time
-
+    
     for p in instances:
         print(p)
-        name, capacity, node_data = read_instance(folder + "/"+  p)
+        name, capacity, node_data = read_instance(folder +"/"+  p)
         ins = instance(name, capacity, node_data, nnodes)
         ins.capacity = q
         initialize(ins)
@@ -771,44 +747,26 @@ def test(gurobi_prop, ils_prop, global_time, q, nnodes):
         s, cost = prim(ins, vis = False, initial = True)
         print("prim:", cost)
 
-        s, cost, optimal = gurobi_fast_solution(ins, time_limit= gurobi_time, start = s)
-        print("gurobi:", cost)
+        optimal = False
+
         initial_solution = (deepcopy(s), cost)
         if not optimal:
             solutions = []
             best_solution = cost
             times = []
             tries = 10
-
             for seed in range(tries):
                 print(seed)
                 time = perf_counter()
-                try:
-                    s, cost = ILS_solution(ins, semilla = seed, initial_solution = deepcopy(initial_solution), time_limit = ils_time )
-                    print("ILS:", cost)
-
-                    while perf_counter() - time < global_time:
-                        time_left = global_time - perf_counter() + time
-                        print(time_left)
-                        s, cost, optimal = gurobi_fast_solution(ins, time_limit= min(gurobi_time, time_left), start = deepcopy(s), rando = True)
-                        print("gurobi:", cost)
-
-                        initial_ = (deepcopy(s), cost)
-                        if perf_counter() - time < global_time:
-                            time_left = global_time - perf_counter() + time
-                            print(time_left)
-                            s, cost = ILS_solution(ins, semilla = seed, initial_solution = deepcopy(initial_), time_limit = min(ils_time, time_left) )
-                            print("ILS:", cost)
-                except:
-                    print(f"Error en la ejecución {seed} de la instancia {p} con carga {q}")
-                    s, cost = deepcopy(initial_solution)
-
-                time = perf_counter() - time
+                s, cost = ILS_solution(ins, semilla = seed, initial_solution = deepcopy(initial_solution), time_limit = ils_time )
+                print("ILS:", cost)
+            
+                time = perf_counter() - time                
                 times.append(time)
                 solutions.append(cost)
                 if best_solution > cost:
-                    best_solution = cost
-        
+                    best_solution = cost    
+            
             dic = {"name": f"{name}","min": best_solution, "avg": sum(solutions) / tries,  "t_avg": gurobi_time + sum(times) / tries}
             results.append(dic)
         else:
@@ -819,26 +777,20 @@ def test(gurobi_prop, ils_prop, global_time, q, nnodes):
     df.to_excel(f"{nombre}.xlsx", index= False)
 
 if __name__ == "__main__":
-    argv = sys.argv[1:] # + "-a 0.032 -f 10000 -e 20000 -r 6000 -s 20 -n 7.001 -x 0.121 -y 0.677 -z 0.186 -c 0.016 -u 0.013 -v 0.157 -w 0.830 -b 5".split()
+    argv = sys.argv[1:]
     try:
-        opts, args = getopt.getopt(argv, 'i:j:k:t:a:d:f:e:r:s:n:x:y:z:c:u:v:w:b:', 
-                                   ["gurobi_prop = ","ils_prop = ","nnodes = ","global_time = ",
+        opts, args = getopt.getopt(argv, 'i:a:d:f:e:r:s:n:x:y:z:c:u:v:w:b:o:', 
+                                   ["id =","capacity = ", "nnodes = ",
                                     "acceptance = ", "rando = ","feasibility_param = ","elite_param = ","size_elite = ","penalization = ",
                                     "p1 = ","p2 = ","p3 = ","p4 = ","revision_param = ","local1 = ","local2 = ","local3 = ","branch_time = "])
         print("Leido")
     except getopt.GetoptError:
-        print ('test.py -a acceptance -f feasibility_param -e elite_param -s size_elite -n penalization -x pert1 -y pert2 -z pert3 -c pert4 -r revision_param -u local1 -v local2 -w local3 -b branch_time')
+        print ('test.py -q capacity -k nnodes -a acceptance -f feasibility_param -e elite_param -s size_elite -n penalization -x pert1 -y pert2 -z pert3 -c pert4 -r revision_param -u local1 -v local2 -w local3 -b branch_time')
     
     for opt, arg in opts:
-        if opt in ["-i","--gurobi_prop"]:
-            gurobi_prop = int(arg)
-        elif opt in ['-j',"--ils_prop"]:
-            ils_prop = int(arg)
-        elif opt in ['-k','--nnodes']:
-            nnodes = int(arg)
-        elif opt in ['-t','--global_time']:
-            global_time = int(arg)
-        elif opt in ['-a','--acceptance']:
+        if opt in ['-i','--id']:
+            conf_id = str(arg)
+        if opt in ['-a','--acceptance']:
             mu_acceptance = float(arg)
         elif opt in ['-d','--rando']:
             RANDO_PARAM = float(arg)
@@ -853,24 +805,76 @@ if __name__ == "__main__":
         elif opt in ['-n','--penalization']:
             rho = float(arg)
         elif opt in ['-x','--p1']:
-            theta1 = float(arg)
+            p1 = float(arg)
         elif opt in ['-y','--p2']:
-            theta2 = float(arg)
+            p2 = float(arg)
         elif opt in ['-z','--p3']:
-            theta3 = float(arg)
+            p3 = float(arg)
         elif opt in ['-c','--p4']:
-            theta4 = float(arg)
+            p4 = float(arg)
         elif opt in ['-u','--local1']:
-            phi1 = float(arg)
+            ls1 = float(arg)
         elif opt in ['-v','--local2']:
-            phi2 = float(arg)
+            ls2 = float(arg)
         elif opt in ['-w','--local3']:
-            phi3 = float(arg)
+            ls3 = float(arg)
         elif opt in ['-b','--branch_time']:
             BRANCH_TIME = float(arg)
+    theta1 = p1
+    theta2 = theta1 + p2
+    theta3 = theta2 + p3
+    phi1 = ls1
+    phi2 = phi1 + ls2
+    
     INITIAL_TRIGGER = 40
+    gurobi_prop = 0
+    ils_prop = 60
+    global_time = 180
+
     capacities = [1000,20,15,10,5]
+    nnodes = 200
     for q in capacities:
-        nombre = f"MLM_proporciones_{gurobi_prop}_{ils_prop}_{global_time}_Q{q}_n{nnodes}"
+        nombre = f"MLM{conf_id}_{gurobi_prop}_{ils_prop}_{global_time}_Q{q}_n{nnodes}"
         test(gurobi_prop=gurobi_prop/60, ils_prop=ils_prop/60, 
              global_time=global_time, q=q, nnodes=nnodes)
+
+# -i conf1 -a 0.006 -d 0.405 -f 13000 -e 11000 -s 30 -n 0.56 -x 0.196  -y 0.406 -z 0.366 -c 0.032 -r 6500 -u 0.073 -v 0.247 -w 0.68  -b 1
+# -i conf2 -a 0.025 -d 0.425 -f 11000 -e 17000 -s 40 -n 5.588 -x 0.001 -y 0.38  -z 0.374 -c 0.245 -r 6500 -u 0.088 -v 0.113 -w 0.799 -b 2
+# -i conf3 -a 0.009 -d 0.393 -f 13000 -e 13000 -s 30 -n 1.26 -x 0.197  -y 0.436 -z 0.363 -c 0.004 -r 7000 -u 0.132 -v 0.199 -w 0.669 -b 1
+# -i conf4 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0.139 -v 0.183 -w 0.679 -b 2
+# -i conf5 -a 0.009 -d 0.393 -f 12000 -e 18000 -s 40 -n 6.02 -x 0.049  -y 0.378 -z 0.378 -c 0.195 -r 6500 -u 0.024 -v 0.098 -w 0.879 -b 2
+
+# tests de componentnes (conf 4 es el ganador)
+        
+# -i version1 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0.139 -v 0.183 -w 0.679 -b 2
+# -i version2 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0.139 -v 0.183 -w 0.679 -b 2
+# -i version3 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0.139 -v 0.183 -w 0.679 -b 2
+# -i version4 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0.139 -v 0.183 -w 0.679 -b 2
+
+# [Ayer 19:03] Carlos Emilio Contreras Bolton
+# Version 1: sin MILP-solver
+# [Ayer 19:04] Carlos Emilio Contreras Bolton
+# Version 2: sin intensification strategy
+# [Ayer 19:04] Carlos Emilio Contreras Bolton
+# Version 3: sin merge-branches-improvemen
+# [Ayer 19:06] Carlos Emilio Contreras Bolton
+# Version 4: todo igual solo que los parámetros, de operadores que se suman y dan 1, perturbación y búsqueda loca, en proporciones iguales
+
+
+
+
+# [19:21] Carlos Emilio Contreras Bolton
+
+# se ejecutó en dos tramos: 2023-10-16 09:30:12 y 2023-10-18 02:18:29
+
+# [19:21] Carlos Emilio Contreras Bolton
+
+# 2023-10-18 16:54:54 y 2023-10-19 18:37:21
+
+# [19:21] Carlos Emilio Contreras Bolton
+
+# para que le calcules el tiempo total 
+
+# [19:21] Carlos Emilio Contreras Bolton
+
+# son como tres día y aglo
