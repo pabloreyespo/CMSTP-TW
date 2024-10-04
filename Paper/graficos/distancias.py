@@ -18,10 +18,12 @@ parents = [-1, 0, 1, 4, 0, 0, 5, 4, 5, 6]
 gates   = [ 0, 1, 1, 4, 4, 5, 5, 4, 5, 5]
 loads   = [ 0, 2, 0, 0, 3, 4, 0, 0, 0, 0]
 arrival = [0] * 10
-xcoords = np.array(xcoords) * 10 - 50
-ycoords = np.array(ycoords) * 10 - 50
-earliest = np.random.random(10) * 10
-earliest = earliest.round(1) * 10
+xcoords = np.array(xcoords) * 10 
+ycoords = np.array(ycoords) * 10 
+#earliest = np.random.random(10) * 10
+#earliest = earliest.round(1) * 10
+earliest = np.array([0,  95, 73, 50, 55, 6, 16, 87, 60, 40])
+latest   = np.array([200, 114, 152, 72, 60, 47, 73, 97, 82, 50])
 earliest[0] = 0
 
 print(xcoords)

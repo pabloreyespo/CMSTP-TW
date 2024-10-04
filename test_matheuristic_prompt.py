@@ -800,7 +800,7 @@ def test(gurobi_prop, ils_prop, global_time, q, nnodes):
 if __name__ == "__main__":
     argv = sys.argv[1:]
     try:
-        opts, args = getopt.getopt(argv, 'i:a:d:f:e:r:s:n:x:y:z:c:u:v:w:b:o:', 
+        opts, args = getopt.getopt(argv, 'i:a:d:f:e:s:n:x:y:z:c:r:u:v:w:b:', 
                                    ["id =","capacity = ", "nnodes = ",
                                     "acceptance = ", "rando = ","feasibility_param = ","elite_param = ","size_elite = ","penalization = ",
                                     "p1 = ","p2 = ","p3 = ","p4 = ","revision_param = ","local1 = ","local2 = ","local3 = ","branch_time = "])
@@ -819,8 +819,6 @@ if __name__ == "__main__":
             alpha_unfeasible = int(round(float(arg)))
         elif opt in ['-e','--elite_param']:
             beta_elite = int(round(float(arg)))
-        elif opt in ['-r','--revision_param']:
-            gamma_intensification = int(round(float(arg)))
         elif opt in ['-s','--size_elite']:
             elite_size = int(arg)
         elif opt in ['-n','--penalization']:
@@ -833,6 +831,8 @@ if __name__ == "__main__":
             p3 = float(arg)
         elif opt in ['-c','--p4']:
             p4 = float(arg)
+        elif opt in ['-r','--revision_param']:
+            gamma_intensification = int(round(float(arg)))
         elif opt in ['-u','--local1']:
             ls1 = float(arg)
         elif opt in ['-v','--local2']:
@@ -841,61 +841,27 @@ if __name__ == "__main__":
             ls3 = float(arg)
         elif opt in ['-b','--branch_time']:
             BRANCH_TIME = float(arg)
+    
     theta1 = p1
     theta2 = theta1 + p2
     theta3 = theta2 + p3
     phi1 = ls1
     phi2 = phi1 + ls2
-    
+
     INITIAL_TRIGGER = 40
     gurobi_prop = 20
     ils_prop = 10
-    global_time = 180
+    global_time = 60
 
-    capacities = [1000,20,15,10,5]
-    nnodes = 200
+    capacities = [10000,20,15,10,5]
+    nnodes = 100
     for q in capacities:
-        nombre = f"MLM{conf_id}_{gurobi_prop}_{ils_prop}_{global_time}_Q{q}_n{nnodes}"
+        nombre = f"TSM{conf_id}_{gurobi_prop}_{ils_prop}_{global_time}_Q{q}_n{nnodes}"
         test(gurobi_prop=gurobi_prop/60, ils_prop=ils_prop/60, 
              global_time=global_time, q=q, nnodes=nnodes)
 
-# -i conf1 -a 0.006 -d 0.405 -f 13000 -e 11000 -s 30 -n 0.56 -x 0.196  -y 0.406 -z 0.366 -c 0.032 -r 6500 -u 0.073 -v 0.247 -w 0.68  -b 1
-# -i conf2 -a 0.025 -d 0.425 -f 11000 -e 17000 -s 40 -n 5.588 -x 0.001 -y 0.38  -z 0.374 -c 0.245 -r 6500 -u 0.088 -v 0.113 -w 0.799 -b 2
-# -i conf3 -a 0.009 -d 0.393 -f 13000 -e 13000 -s 30 -n 1.26 -x 0.197  -y 0.436 -z 0.363 -c 0.004 -r 7000 -u 0.132 -v 0.199 -w 0.669 -b 1
-# -i conf4 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0.139 -v 0.183 -w 0.679 -b 2
-# -i conf5 -a 0.009 -d 0.393 -f 12000 -e 18000 -s 40 -n 6.02 -x 0.049  -y 0.378 -z 0.378 -c 0.195 -r 6500 -u 0.024 -v 0.098 -w 0.879 -b 2
-
-# tests de componentnes (conf 4 es el ganador)
-        
-# -i version1 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0.139 -v 0.183 -w 0.679 -b 2
-# -i version2 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0.139 -v 0.183 -w 0.679 -b 2
-# -i version3 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.064 -y 0.538 -z 0.337 -c 0.061 -r 8000 -u 0     -v 0.213 -w 0.787 -b 2
-# -i version4 -a 0.005 -d 0.29  -f 15000 -e 13000 -s 40 -n 3.709 -x 0.250 -y 0.250 -z 0.250 -c 0.250 -r 8000 -u 0.333 -v 0.333 -w 0.333 -b 2
-
-# [Ayer 19:03] Carlos Emilio Contreras Bolton
-# Version 1: sin MILP-solver
-# [Ayer 19:04] Carlos Emilio Contreras Bolton
-# Version 2: sin intensification strategy
-# [Ayer 19:04] Carlos Emilio Contreras Bolton
-# Version 3: sin merge-branches-improvemen
-# [Ayer 19:06] Carlos Emilio Contreras Bolton
-# Version 4: todo igual solo que los parámetros, de operadores que se suman y dan 1, perturbación y búsqueda loca, en proporciones iguales
-
-
-
-
-# [19:21] Carlos Emilio Contreras Bolton
-
-# se ejecutó en dos tramos: 2023-10-16 09:30:12 y 2023-10-18 02:18:29
-
-# [19:21] Carlos Emilio Contreras Bolton
-
-# 2023-10-18 16:54:54 y 2023-10-19 18:37:21
-
-# [19:21] Carlos Emilio Contreras Bolton
-
-# para que le calcules el tiempo total 
-
-# [19:21] Carlos Emilio Contreras Bolton
-
-# son como tres día y aglo
+# -i conf1  -a 0.021 -d 0.47  -f 9000  -e 14000 -s 10 -n 7.384 -x 0.1   -y 0.698 -z 0.131 -c 0.071 -r 2500 -u 0.102 -v 0.019 -w 0.879 -b 3
+# -i conf2  -a 0.018 -d 0.467 -f 9000  -e 14000 -s 10 -n 7.797 -x 0.097 -y 0.713 -z 0.081 -c 0.109 -r 2500 -u 0.096 -v 0.003 -w 0.901 -b 3
+# -i conf3  -a 0.006 -d 0.467 -f 9000  -e 13000 -s 10 -n 8.112 -x 0.126 -y 0.69  -z 0.1   -c 0.084 -r 2500 -u 0.108 -v 0.033 -w 0.859 -b 3
+# -i conf4  -a 0.011 -d 0.482 -f 8000  -e 14000 -s 10 -n 8.283 -x 0.071 -y 0.729 -z 0.095 -c 0.105 -r 3000 -u 0.019 -v 0.027 -w 0.954 -b 3
+# -i conf5  -a 0.01  -d 0.43  -f 10000 -e 13000 -s 15 -n 4.382 -x 0.033 -y 0.776 -z 0.021 -c 0.169 -r 3000 -u 0.051 -v 0.074 -w 0.875 -b 3
